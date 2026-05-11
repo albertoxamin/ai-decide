@@ -551,6 +551,8 @@
       { id: 'magic8',     label: 'Magic 8-Ball',     getFn: () => showMagic8BallPopup },
       { id: 'strongman',  label: 'High Striker',     getFn: () => showHighStrikerPopup },
       { id: 'upscale',    label: 'AI Upscale (144p\u21924K)', getFn: () => showUpscalePopup },
+      { id: 'actionfigure', label: 'AI Action Figure', getFn: () => showActionFigurePopup },
+      { id: 'brainrot',   label: 'Italian Brain Rot', getFn: () => showItalianBrainrotPopup },
     ];
 
     /** Build the standard dimmed-overlay container used by every picker animation. */
@@ -3779,6 +3781,427 @@
       styleEl.remove();
       revealWinner(order, targetIndex);
     }, cycleMs + slowMs + enhanceMs + holdMs);
+  }
+
+  /** AI Action Figure picker. Riffs on the April 2026 ChatGPT-image LinkedIn/TikTok
+   *  trend ("imagine me as a boxed action figure"). A retro 90s toy blister pack
+   *  appears, the dome cycles through candidate "figures" (avatar + name card),
+   *  then a gold LIMITED EDITION stamp slams onto the winner. */
+  function showActionFigurePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const totalMs = CONFIG.spinDuration;
+
+    const introMs = Math.max(220, Math.round(totalMs * 0.10));
+    const cycleMs = Math.max(700, Math.round(totalMs * 0.45));
+    const slowMs = Math.max(280, Math.round(totalMs * 0.18));
+    const stampMs = Math.max(400, Math.round(totalMs * 0.18));
+    const holdMs = Math.max(250, totalMs - introMs - cycleMs - slowMs - stampMs);
+
+    const headline = document.createElement('div');
+    headline.textContent = 'AI Action Figure';
+    headline.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:22px;letter-spacing:3px;' +
+      'color:#fbf4dd;text-shadow:0 3px 0 rgba(0,0,0,0.55);text-transform:uppercase;';
+    overlay.appendChild(headline);
+
+    const boxW = 360;
+    const boxH = 480;
+    const box = document.createElement('div');
+    box.style.cssText =
+      'position:relative;width:' + boxW + 'px;height:' + boxH + 'px;' +
+      'background:linear-gradient(180deg, #e94b2a, #c83a1e);' +
+      'border:4px solid #1b110a;border-radius:8px;overflow:hidden;' +
+      'box-shadow:0 24px 50px rgba(0,0,0,0.7), inset 0 0 0 4px #fbf4dd, inset 0 0 0 6px #1b110a;' +
+      'transform:scale(0.7);opacity:0;' +
+      'transition:transform ' + introMs + 'ms cubic-bezier(0.4, 1.3, 0.6, 1), opacity ' + introMs + 'ms ease;';
+    overlay.appendChild(box);
+
+    // Top banner
+    const banner = document.createElement('div');
+    banner.style.cssText =
+      'position:absolute;top:14px;left:14px;right:14px;height:48px;' +
+      'background:#fbf4dd;border:3px solid #1b110a;border-radius:4px;' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'font-family:"Rye","Times New Roman",serif;font-size:20px;font-weight:900;' +
+      'color:#1b110a;letter-spacing:2px;text-transform:uppercase;' +
+      'box-shadow:0 4px 0 #1b110a;';
+    banner.textContent = '\u2605 AI Action Figure \u2605';
+    box.appendChild(banner);
+
+    // Yellow "AI POWERED!" corner burst
+    const burst = document.createElement('div');
+    burst.style.cssText =
+      'position:absolute;top:78px;right:18px;width:84px;height:84px;' +
+      'background:#d99a2b;color:#1b110a;border:3px solid #1b110a;border-radius:50%;' +
+      'display:flex;align-items:center;justify-content:center;' +
+      'font-family:"Rye","Times New Roman",serif;font-size:14px;font-weight:900;' +
+      'letter-spacing:1px;line-height:1.05;text-align:center;text-transform:uppercase;' +
+      'transform:rotate(-12deg);box-shadow:0 4px 0 #1b110a;' +
+      'animation:figBurst 1.6s ease-in-out infinite;z-index:3;';
+    burst.innerHTML = 'AI<br>POWERED!';
+    box.appendChild(burst);
+
+    // Clear plastic dome
+    const dome = document.createElement('div');
+    dome.style.cssText =
+      'position:absolute;left:32px;right:32px;top:78px;height:280px;' +
+      'background:linear-gradient(135deg, rgba(214,228,255,0.45) 0%, rgba(180,210,250,0.25) 50%, rgba(120,180,250,0.45) 100%);' +
+      'border:3px solid #1b110a;border-radius:40px 40px 12px 12px;overflow:hidden;' +
+      'box-shadow:inset 14px 14px 28px rgba(255,255,255,0.7), inset -12px -12px 30px rgba(0,0,0,0.18), 0 6px 0 #1b110a;' +
+      'display:flex;align-items:center;justify-content:center;';
+    box.appendChild(dome);
+
+    // Diagonal sheen on the dome
+    const sheen = document.createElement('div');
+    sheen.style.cssText =
+      'position:absolute;left:-15%;top:-20%;width:55%;height:140%;' +
+      'background:linear-gradient(115deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 50%);' +
+      'pointer-events:none;';
+    dome.appendChild(sheen);
+
+    // Figure card (the "toy")
+    const figureCard = document.createElement('div');
+    figureCard.style.cssText =
+      'position:relative;width:200px;background:#fbf4dd;border:3px solid #1b110a;border-radius:8px;' +
+      'padding:14px;text-align:center;box-shadow:0 4px 0 #1b110a, 0 8px 16px rgba(0,0,0,0.35);' +
+      'transition:box-shadow 0.5s ease;z-index:2;';
+    dome.appendChild(figureCard);
+
+    const avatarImg = document.createElement('img');
+    avatarImg.src = generateAvatar(order[0].name);
+    avatarImg.style.cssText =
+      'width:80px;height:80px;border-radius:50%;border:3px solid #1b110a;display:block;margin:0 auto;';
+    figureCard.appendChild(avatarImg);
+
+    const nameLabel = document.createElement('div');
+    nameLabel.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:18px;font-weight:900;color:#1b110a;' +
+      'margin-top:10px;letter-spacing:1px;text-transform:uppercase;';
+    nameLabel.textContent = '---';
+    figureCard.appendChild(nameLabel);
+
+    const seriesLabel = document.createElement('div');
+    seriesLabel.style.cssText =
+      'font-family:"JetBrains Mono","Menlo",monospace;font-size:10px;letter-spacing:2px;' +
+      'color:#6b3a18;margin-top:6px;font-weight:700;';
+    seriesLabel.textContent = 'SERIES 2026 \u2014 1 OF 1';
+    figureCard.appendChild(seriesLabel);
+
+    // "GENERATING…" status at the bottom of the dome
+    const generating = document.createElement('div');
+    generating.style.cssText =
+      'position:absolute;left:0;right:0;bottom:8px;text-align:center;' +
+      'color:#0a1230;font-family:"JetBrains Mono","Menlo",monospace;' +
+      'font-size:11px;font-weight:700;letter-spacing:2px;' +
+      'background:rgba(255,255,255,0.78);padding:3px 0;border-top:1px dashed #1b110a;' +
+      'opacity:0;transition:opacity 0.3s ease;z-index:3;';
+    generating.textContent = 'GENERATING\u2026';
+    dome.appendChild(generating);
+
+    // Accessories row
+    const accessoriesWrap = document.createElement('div');
+    accessoriesWrap.style.cssText =
+      'position:absolute;left:32px;right:32px;top:374px;height:50px;' +
+      'background:#fbf4dd;border:3px solid #1b110a;border-radius:6px;' +
+      'display:flex;align-items:center;justify-content:space-around;padding:0 10px;' +
+      'font-family:"Rye","Times New Roman",serif;color:#1b110a;font-weight:700;' +
+      'font-size:11px;letter-spacing:1px;text-transform:uppercase;box-shadow:0 4px 0 #1b110a;';
+    ['\u2615 Coffee', '\uD83D\uDCBB Laptop', '\uD83D\uDD11 Keys', '\uD83D\uDE2C Anxiety'].forEach(t => {
+      const item = document.createElement('span');
+      item.textContent = t;
+      accessoriesWrap.appendChild(item);
+    });
+    box.appendChild(accessoriesWrap);
+
+    // Barcode + AI code at the bottom
+    const barcode = document.createElement('div');
+    barcode.style.cssText =
+      'position:absolute;left:32px;bottom:18px;width:160px;height:28px;background:#fbf4dd;' +
+      'border:2px solid #1b110a;border-radius:3px;padding:3px;box-sizing:border-box;';
+    const ns = 'http://www.w3.org/2000/svg';
+    const bcSvg = document.createElementNS(ns, 'svg');
+    bcSvg.setAttribute('width', '154');
+    bcSvg.setAttribute('height', '22');
+    bcSvg.setAttribute('viewBox', '0 0 154 22');
+    let bx = 0;
+    while (bx < 154) {
+      const w = (Math.random() < 0.5 ? 1 : 2) + (Math.random() < 0.3 ? 1 : 0);
+      const rect = document.createElementNS(ns, 'rect');
+      rect.setAttribute('x', String(bx));
+      rect.setAttribute('y', '0');
+      rect.setAttribute('width', String(w));
+      rect.setAttribute('height', '22');
+      rect.setAttribute('fill', '#1b110a');
+      bcSvg.appendChild(rect);
+      bx += w + (Math.random() < 0.5 ? 1 : 2);
+    }
+    barcode.appendChild(bcSvg);
+    box.appendChild(barcode);
+
+    const codeLabel = document.createElement('div');
+    codeLabel.style.cssText =
+      'position:absolute;right:32px;bottom:22px;font-family:"JetBrains Mono","Menlo",monospace;' +
+      'font-size:11px;color:#fbf4dd;font-weight:700;letter-spacing:1px;';
+    codeLabel.textContent = 'AI-' + Math.floor(Math.random() * 9000 + 1000);
+    box.appendChild(codeLabel);
+
+    // Gold "LIMITED EDITION" stamp, hidden until the lock phase
+    const stamp = document.createElement('div');
+    stamp.style.cssText =
+      'position:absolute;left:50%;top:50%;' +
+      'transform:translate(-50%, -50%) rotate(-18deg) scale(0.4);' +
+      'padding:8px 24px;background:#d99a2b;border:3px solid #1b110a;border-radius:6px;' +
+      'font-family:"Rye","Times New Roman",serif;font-size:18px;font-weight:900;color:#1b110a;' +
+      'letter-spacing:2px;text-transform:uppercase;' +
+      'box-shadow:0 5px 0 #1b110a, 0 0 24px rgba(255,232,150,0.85);' +
+      'opacity:0;transition:opacity 0.18s ease, transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);z-index:6;';
+    stamp.textContent = 'Limited Edition';
+    box.appendChild(stamp);
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes figBurst { 0%,100% { transform: rotate(-12deg) scale(1); } 50% { transform: rotate(-12deg) scale(1.08); } }';
+    document.head.appendChild(styleEl);
+
+    document.body.appendChild(overlay);
+
+    // Box intro
+    requestAnimationFrame(() => {
+      box.style.transform = 'scale(1)';
+      box.style.opacity = '1';
+    });
+
+    // Interval handles in outer scope so the lock phase can clear them safely.
+    const shuffled = order.slice().sort(() => Math.random() - 0.5);
+    let idx = 0;
+    let fastInterval = null;
+    let slowInterval = null;
+
+    setTimeout(() => {
+      generating.style.opacity = '1';
+      fastInterval = setInterval(() => {
+        const pick = shuffled[idx % shuffled.length];
+        nameLabel.textContent = String(pick.name).toUpperCase().slice(0, 13);
+        avatarImg.src = pick.avatarUrl;
+        idx++;
+      }, 75);
+    }, introMs);
+
+    setTimeout(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      slowInterval = setInterval(() => {
+        const pick = shuffled[idx % shuffled.length];
+        nameLabel.textContent = String(pick.name).toUpperCase().slice(0, 13);
+        avatarImg.src = pick.avatarUrl;
+        idx++;
+      }, 180);
+      generating.textContent = 'FINALIZING\u2026';
+    }, introMs + cycleMs);
+
+    setTimeout(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      if (slowInterval) { clearInterval(slowInterval); slowInterval = null; }
+      const winner = order[targetIndex];
+      nameLabel.textContent = String(winner.name).toUpperCase().slice(0, 13);
+      avatarImg.src = winner.avatarUrl;
+      generating.style.opacity = '0';
+      figureCard.style.boxShadow = '0 4px 0 #1b110a, 0 0 32px rgba(255,232,150,0.95)';
+      // Stamp slam
+      setTimeout(() => {
+        stamp.style.opacity = '1';
+        stamp.style.transform = 'translate(-50%, -50%) rotate(-18deg) scale(1.12)';
+        setTimeout(() => {
+          stamp.style.transform = 'translate(-50%, -50%) rotate(-18deg) scale(1)';
+        }, 240);
+      }, 80);
+    }, introMs + cycleMs + slowMs);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, introMs + cycleMs + slowMs + stampMs + holdMs);
+  }
+
+  /** Italian Brain Rot picker. Riffs on the 2026 TikTok AI-creature meme wave
+   *  (Tralalero Tralala, Bombardiro Crocodilo, Cappuccino Assassino, etc.). A
+   *  chaotic stage with floating emoji creatures, a glitchy name display flipping
+   *  through random colors and rotations, and a bottom marquee of gibberish.
+   *  The winner slams in under a gold "VINCITORE!" banner. */
+  function showItalianBrainrotPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const totalMs = CONFIG.spinDuration;
+
+    const cycleMs = Math.max(700, Math.round(totalMs * 0.50));
+    const slowMs = Math.max(300, Math.round(totalMs * 0.18));
+    const slamMs = Math.max(400, Math.round(totalMs * 0.18));
+    const holdMs = Math.max(250, totalMs - cycleMs - slowMs - slamMs);
+
+    const headline = document.createElement('div');
+    headline.textContent = 'Brain Rot';
+    headline.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:22px;letter-spacing:3px;' +
+      'color:#fbf4dd;text-shadow:0 3px 0 rgba(0,0,0,0.55);text-transform:uppercase;';
+    overlay.appendChild(headline);
+
+    const stageW = 500;
+    const stageH = 340;
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      'position:relative;width:' + stageW + 'px;height:' + stageH + 'px;overflow:hidden;' +
+      'background:linear-gradient(135deg, #0cc846 0%, #e81dbb 50%, #d99a2b 100%);' +
+      'border:5px solid #1b110a;border-radius:10px;' +
+      'box-shadow:0 24px 50px rgba(0,0,0,0.7);';
+    overlay.appendChild(stage);
+
+    // Scan-line / glitch overlay
+    const glitch = document.createElement('div');
+    glitch.style.cssText =
+      'position:absolute;inset:0;mix-blend-mode:overlay;pointer-events:none;' +
+      'background:repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 5px);' +
+      'animation:brAnimBg 0.4s steps(3) infinite;';
+    stage.appendChild(glitch);
+
+    // Floating emoji creatures
+    const emojis = [
+      '\uD83D\uDC0A', '\uD83C\uDF5D', '\uD83C\uDF55', '\uD83E\uDD16',
+      '\uD83E\uDD8D', '\uD83C\uDF54', '\uD83D\uDC80', '\u2615',
+      '\uD83C\uDF4C', '\uD83E\uDDC9',
+    ];
+    for (let i = 0; i < 12; i++) {
+      const e = document.createElement('div');
+      const left = Math.floor(Math.random() * 92);
+      const top = Math.floor(Math.random() * 75);
+      const delay = -(Math.random() * 4).toFixed(2);
+      const size = 30 + Math.floor(Math.random() * 30);
+      const dur = (1.4 + Math.random() * 1.6).toFixed(2);
+      e.textContent = emojis[i % emojis.length];
+      e.style.cssText =
+        'position:absolute;left:' + left + '%;top:' + top + '%;font-size:' + size + 'px;' +
+        'animation:brBounce ' + dur + 's ease-in-out infinite alternate;animation-delay:' + delay + 's;' +
+        'pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));';
+      stage.appendChild(e);
+    }
+
+    // Center name + gibberish
+    const center = document.createElement('div');
+    center.style.cssText =
+      'position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);text-align:center;z-index:4;';
+    stage.appendChild(center);
+
+    const bigName = document.createElement('div');
+    bigName.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:54px;font-weight:900;' +
+      'color:#fbf4dd;text-shadow:6px 6px 0 #1b110a, -2px -2px 0 #c83a1e, 2px -2px 0 #0cc846;' +
+      'letter-spacing:1px;line-height:1;padding:8px 22px;background:rgba(0,0,0,0.22);' +
+      'border:3px dashed #fbf4dd;border-radius:8px;transition:transform 0.35s ease;';
+    bigName.textContent = '???';
+    center.appendChild(bigName);
+
+    const gibberishLine = document.createElement('div');
+    gibberishLine.style.cssText =
+      'margin-top:10px;font-family:"Rye","Times New Roman",serif;font-size:22px;' +
+      'color:#fbf4dd;font-weight:700;letter-spacing:2px;text-shadow:0 3px 0 rgba(0,0,0,0.6);';
+    gibberishLine.textContent = '\u2014';
+    center.appendChild(gibberishLine);
+
+    // Bottom marquee
+    const marqueeWrap = document.createElement('div');
+    marqueeWrap.style.cssText =
+      'position:absolute;left:0;right:0;bottom:0;height:32px;' +
+      'background:rgba(0,0,0,0.55);border-top:2px solid #1b110a;overflow:hidden;display:flex;align-items:center;';
+    const marqueePhrase =
+      'BOMBARDIRO CROCODILO \u2666 TRALALERO TRALALA \u2666 LIRILI LARILA \u2666 ' +
+      'BRR BRR PATAPIM \u2666 TUNG TUNG TUNG SAHUR \u2666 BANANITA DOLPHINITA \u2666 ' +
+      'CAPPUCCINO ASSASSINO \u2666 BOMBOMBINI GUSINI \u2666 ';
+    const marqueeText = document.createElement('div');
+    marqueeText.textContent = marqueePhrase + marqueePhrase;
+    marqueeText.style.cssText =
+      'white-space:nowrap;color:#fbf4dd;font-family:"JetBrains Mono","Menlo",monospace;' +
+      'font-size:12px;font-weight:700;letter-spacing:2px;' +
+      'animation:brMarquee 8s linear infinite;';
+    marqueeWrap.appendChild(marqueeText);
+    stage.appendChild(marqueeWrap);
+
+    // Gold "VINCITORE!" banner
+    const banner = document.createElement('div');
+    banner.style.cssText =
+      'position:absolute;left:50%;top:18px;transform:translateX(-50%) rotate(-3deg) scale(0.3);' +
+      'padding:6px 24px;background:#d99a2b;border:3px solid #1b110a;border-radius:6px;' +
+      'font-family:"Rye","Times New Roman",serif;font-size:20px;font-weight:900;color:#1b110a;' +
+      'letter-spacing:3px;text-transform:uppercase;' +
+      'box-shadow:0 4px 0 #1b110a, 0 0 22px rgba(255,232,150,0.85);' +
+      'opacity:0;transition:opacity 0.18s ease, transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);z-index:6;';
+    banner.textContent = 'Vincitore!';
+    stage.appendChild(banner);
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes brBounce { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(22px,-32px) rotate(15deg); } }' +
+      '@keyframes brAnimBg { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-4px,2px); } }' +
+      '@keyframes brMarquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }' +
+      '@keyframes brShake { 0%,100% { transform: translate(0,0) rotate(-1deg); } 25% { transform: translate(-2px,1px) rotate(1deg); } 50% { transform: translate(2px,-1px) rotate(-1deg); } 75% { transform: translate(-1px,-1px) rotate(0.5deg); } }';
+    document.head.appendChild(styleEl);
+
+    document.body.appendChild(overlay);
+
+    const SUFFIXES = ['CROCODILO!', 'TRALALA!', 'CAPPUCCINO!', 'ASSASSINO!', 'PATAPIM!', 'BANANITA!', 'BOMBARDIRO!', 'GUSINI!'];
+    const COLORS = ['#fbf4dd', '#d99a2b', '#0cc846', '#c83a1e', '#e81dbb', '#09c5a7', '#ffffff'];
+
+    const shuffled = order.slice().sort(() => Math.random() - 0.5);
+    let idx = 0;
+    let fastInterval = null;
+    let slowInterval = null;
+
+    bigName.style.animation = 'brShake 0.16s linear infinite';
+
+    fastInterval = setInterval(() => {
+      const pick = shuffled[idx % shuffled.length];
+      bigName.textContent = String(pick.name).toUpperCase().slice(0, 10);
+      bigName.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      bigName.style.transform =
+        'rotate(' + (Math.random() * 8 - 4).toFixed(1) + 'deg) ' +
+        'scale(' + (0.95 + Math.random() * 0.18).toFixed(2) + ')';
+      gibberishLine.textContent = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
+      idx++;
+    }, 80);
+
+    setTimeout(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      slowInterval = setInterval(() => {
+        const pick = shuffled[idx % shuffled.length];
+        bigName.textContent = String(pick.name).toUpperCase().slice(0, 10);
+        bigName.style.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        bigName.style.transform = 'rotate(' + (Math.random() * 6 - 3).toFixed(1) + 'deg) scale(1)';
+        gibberishLine.textContent = SUFFIXES[Math.floor(Math.random() * SUFFIXES.length)];
+        idx++;
+      }, 180);
+    }, cycleMs);
+
+    setTimeout(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      if (slowInterval) { clearInterval(slowInterval); slowInterval = null; }
+      bigName.style.animation = 'none';
+      bigName.style.color = '#fbf4dd';
+      bigName.style.transform = 'rotate(0deg) scale(1.1)';
+      bigName.style.transition = 'transform 0.4s cubic-bezier(0.3, 1.5, 0.5, 1), color 0.3s ease';
+      bigName.textContent = String(order[targetIndex].name).toUpperCase().slice(0, 10);
+      gibberishLine.textContent = 'IL VINCITORE \u00C8\u2026';
+
+      setTimeout(() => {
+        banner.style.opacity = '1';
+        banner.style.transform = 'translateX(-50%) rotate(-3deg) scale(1.12)';
+        setTimeout(() => {
+          banner.style.transform = 'translateX(-50%) rotate(-3deg) scale(1)';
+        }, 240);
+      }, 60);
+    }, cycleMs + slowMs);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, cycleMs + slowMs + slamMs + holdMs);
   }
 
     /* ======================== End of picker animations ======================== */
