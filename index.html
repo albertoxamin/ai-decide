@@ -1,0 +1,3407 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>actually let ai decide — can't decide?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Rye&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      color-scheme: light;
+      --paper:      #f1e6cb;
+      --paper-hi:   #fbf4dd;
+      --ink:        #1b110a;
+      --ink-soft:   #5a4232;
+      --rule:       #b89e6f;
+      --accent:     #c83a1e;  /* vermilion */
+      --accent-hi:  #e35636;
+      --gold:       #d99a2b;  /* mustard */
+      --teal:       #2c5d52;
+      --shadow:     6px 6px 0 var(--ink);
+      --shadow-sm:  3px 3px 0 var(--ink);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Fraunces', 'Iowan Old Style', 'Hoefler Text', Georgia, serif;
+      font-optical-sizing: auto;
+      font-variation-settings: "SOFT" 50, "WONK" 0;
+      font-size: 17px;
+      line-height: 1.55;
+      color: var(--ink);
+      background-color: var(--paper);
+      background-image:
+        radial-gradient(ellipse 70% 50% at 50% -5%, rgba(217, 154, 43, 0.32) 0%, transparent 65%),
+        radial-gradient(ellipse 80% 60% at 100% 110%, rgba(44, 93, 82, 0.18) 0%, transparent 60%),
+        radial-gradient(circle at 50% 50%, rgba(27, 17, 10, 0.04) 1px, transparent 1.5px);
+      background-size: auto, auto, 6px 6px;
+      background-attachment: fixed, fixed, fixed;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Paper grain overlay */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.5;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.108  0 0 0 0 0.066  0 0 0 0 0.039  0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+
+    /* Decorative star burst floating in the corner */
+    body::after {
+      content: "";
+      position: fixed;
+      top: 18px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.55;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='%23c83a1e'><path d='M50 5 L55 45 L95 50 L55 55 L50 95 L45 55 L5 50 L45 45 Z'/></g></svg>");
+      background-repeat: no-repeat;
+      background-size: contain;
+      animation: slowSpin 24s linear infinite;
+    }
+    @keyframes slowSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    main { position: relative; z-index: 3; }
+
+    header {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 56px 24px 18px;
+      text-align: center;
+    }
+
+    /* Marquee bulb frame around the title pill. Built from a repeating SVG so
+       the bulbs stay crisp and don't pollute the DOM. */
+    .marquee {
+      display: inline-block;
+      position: relative;
+      padding: 22px 56px 26px;
+      background: var(--paper-hi);
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      transform: rotate(-1.2deg);
+    }
+    .marquee::before,
+    .marquee::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+    /* Top + bottom bulb rows */
+    .marquee::before {
+      left: 28px;
+      right: 28px;
+      top: -14px;
+      bottom: -14px;
+      background-image:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><circle cx='13' cy='13' r='5' fill='%23d99a2b' stroke='%231b110a' stroke-width='1.5'/><circle cx='11' cy='11' r='1.6' fill='%23fff5d6'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'><circle cx='13' cy='13' r='5' fill='%23d99a2b' stroke='%231b110a' stroke-width='1.5'/><circle cx='11' cy='11' r='1.6' fill='%23fff5d6'/></svg>");
+      background-repeat: repeat-x, repeat-x;
+      background-position: top center, bottom center;
+      background-size: 26px 26px;
+      animation: bulbChase 1.4s steps(7) infinite;
+    }
+    /* Left + right arcs of bulbs, hand-placed via box-shadow on a single dot */
+    .marquee::after {
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 0;
+      pointer-events: none;
+      /* Cluster of bulbs hugging the rounded ends */
+      background:
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat -22px 0,
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat -22px -22px,
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat -22px 22px,
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat calc(100% + 22px) 0,
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat calc(100% + 22px) -22px,
+        radial-gradient(circle 4px at 0 0, #d99a2b 0 4px, transparent 5px) no-repeat calc(100% + 22px) 22px;
+      filter: drop-shadow(0 0 1px #1b110a);
+      animation: bulbChase 1.4s steps(7) infinite reverse;
+    }
+    @keyframes bulbChase {
+      0%, 49%  { filter: none; }
+      50%,100% { filter: brightness(1.35) drop-shadow(0 0 6px rgba(217,154,43,0.85)); }
+    }
+
+    .kicker {
+      display: block;
+      font-family: 'Fraunces', Georgia, serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 19px;
+      letter-spacing: 0;
+      color: var(--teal);
+      margin-bottom: 10px;
+      text-transform: none;
+    }
+    .kicker::before, .kicker::after {
+      content: "✦";
+      color: var(--gold);
+      font-style: normal;
+      margin: 0 10px;
+      font-size: 12px;
+      vertical-align: 3px;
+    }
+    header h1 {
+      font-family: 'Rye', 'Times New Roman', serif;
+      font-size: clamp(40px, 7vw, 64px);
+      line-height: 0.95;
+      letter-spacing: 0.01em;
+      color: var(--accent);
+      margin: 0;
+      text-shadow:
+        2px 2px 0 var(--gold),
+        4px 4px 0 var(--ink);
+    }
+    header .tagline {
+      margin: 22px auto 0;
+      max-width: 460px;
+      font-style: italic;
+      font-size: 17.5px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+    header .tagline .num {
+      font-family: 'Rye', serif;
+      font-size: 22px;
+      font-style: normal;
+      color: var(--accent);
+      padding: 0 2px;
+    }
+
+    .panel-wrap {
+      max-width: 720px;
+      margin: 8px auto 64px;
+      padding: 0 22px;
+      position: relative;
+    }
+
+    .panel {
+      position: relative;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          transparent 0,
+          transparent 28px,
+          rgba(27, 17, 10, 0.035) 28px,
+          rgba(27, 17, 10, 0.035) 29px
+        ),
+        var(--paper-hi);
+      border: 3px solid var(--ink);
+      box-shadow: var(--shadow);
+      padding: 36px 32px 28px;
+    }
+    /* Inner double-rule border */
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid var(--ink);
+      pointer-events: none;
+    }
+    /* Corner ornament glyphs */
+    .panel .corner {
+      position: absolute;
+      width: 26px; height: 26px;
+      background: var(--paper-hi);
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Rye', serif;
+      font-size: 14px;
+      color: var(--accent);
+      pointer-events: none;
+    }
+    .panel .corner.tl { top: -14px; left: -14px; }
+    .panel .corner.tr { top: -14px; right: -14px; }
+    .panel .corner.bl { bottom: -14px; left: -14px; }
+    .panel .corner.br { bottom: -14px; right: -14px; }
+
+    label.field { display: block; margin-bottom: 20px; }
+    label.field > span.label-text {
+      display: block;
+      font-family: 'Rye', serif;
+      font-size: 12.5px;
+      letter-spacing: 0.32em;
+      color: var(--ink);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    label.field > span.label-text::before,
+    label.field > span.label-text::after {
+      content: "✦";
+      color: var(--gold);
+      margin: 0 8px;
+      font-size: 11px;
+      vertical-align: 2px;
+    }
+    label.field > span.label-text::before { margin-left: 0; }
+
+    textarea#names, select, input[type="number"] {
+      width: 100%;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px;
+      color: var(--ink);
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: 2px;
+      padding: 13px 16px;
+      transition: box-shadow 0.18s, transform 0.18s, background 0.18s;
+    }
+    textarea#names {
+      min-height: 150px;
+      line-height: 1.55;
+      resize: vertical;
+    }
+    select {
+      appearance: none;
+      padding-right: 44px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10'><path d='M1 1 L7 9 L13 1' stroke='%231b110a' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    textarea#names:focus, select:focus, input:focus {
+      outline: none;
+      box-shadow: 4px 4px 0 var(--accent);
+      transform: translate(-2px, -2px);
+      background: var(--paper-hi);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 22px;
+      align-items: flex-end;
+      margin-top: 4px;
+    }
+    .row > label.field { flex: 1 1 220px; margin-bottom: 0; }
+
+    .button-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+    button.primary, button.secondary {
+      font-family: 'Rye', serif;
+      font-size: 18px;
+      letter-spacing: 0.06em;
+      padding: 16px 30px;
+      border: 3px solid var(--ink);
+      border-radius: 2px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, background 0.18s;
+    }
+    button.primary {
+      background: var(--accent);
+      color: var(--paper-hi);
+      box-shadow: 6px 6px 0 var(--ink);
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+    }
+    button.primary:hover {
+      background: var(--accent-hi);
+      transform: translate(-1px, -1px);
+      box-shadow: 7px 7px 0 var(--ink);
+    }
+    button.primary:active {
+      transform: translate(4px, 4px);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    button.secondary {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 6px 6px 0 var(--ink);
+    }
+    button.secondary:hover {
+      background: var(--gold);
+      transform: translate(-1px, -1px);
+      box-shadow: 7px 7px 0 var(--ink);
+    }
+    button.secondary:active {
+      transform: translate(4px, 4px);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .preview {
+      margin-top: 26px;
+      padding-top: 22px;
+      border-top: 2px dashed var(--rule);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .preview:empty { display: none; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 5px 16px 5px 5px;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 15.5px;
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .chip:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+    .chip img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--ink);
+    }
+
+    .hint {
+      margin-top: 26px;
+      padding-top: 18px;
+      border-top: 2px solid var(--ink);
+      font-size: 14.5px;
+      font-style: italic;
+      color: var(--ink-soft);
+      line-height: 1.65;
+    }
+    .hint b {
+      font-style: normal;
+      font-family: 'Rye', serif;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      font-size: 13px;
+      margin-right: 4px;
+      text-transform: uppercase;
+    }
+    .hint code {
+      background: var(--paper);
+      padding: 2px 8px;
+      border: 1.5px solid var(--rule);
+      border-radius: 2px;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-style: normal;
+      font-size: 12.5px;
+      color: var(--ink);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: var(--paper-hi);
+      font-family: 'Rye', serif;
+      font-size: 13px;
+      padding: 13px 28px;
+      border: 2px solid var(--ink);
+      border-radius: 2px;
+      box-shadow: 5px 5px 0 var(--accent);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      z-index: 10005;
+      pointer-events: none;
+      animation: toastSlide 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes toastSlide {
+      from { transform: translateX(-50%) translateY(24px); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    /* Page load reveal */
+    @keyframes risein {
+      from { opacity: 0; transform: translateY(18px) rotate(-2deg); }
+      to   { opacity: 1; transform: translateY(0) rotate(-1.2deg); }
+    }
+    @keyframes risein-panel {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .marquee { animation: risein 0.7s cubic-bezier(0.34, 1.5, 0.64, 1) 0.05s both; }
+    header .tagline { animation: risein-panel 0.7s cubic-bezier(0.34, 1.5, 0.64, 1) 0.22s both; }
+    .panel-wrap     { animation: risein-panel 0.75s cubic-bezier(0.34, 1.5, 0.64, 1) 0.34s both; }
+
+    @media (max-width: 520px) {
+      header { padding-top: 36px; }
+      header h1 { text-shadow: 1.5px 1.5px 0 var(--gold), 3px 3px 0 var(--ink); }
+      .marquee { padding: 18px 36px 22px; }
+      .panel { padding: 28px 22px 22px; }
+      .panel .corner { width: 22px; height: 22px; font-size: 12px; }
+      button.primary, button.secondary { padding: 14px 22px; font-size: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      body::after { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="marquee">
+      <span class="kicker">can't decide?</span>
+      <h1>let<br />ai decide</h1>
+    </div>
+    <p class="tagline">
+      Twenty fairground contraptions for picking <span class="num">1</span> name
+      from a hat.
+    </p>
+  </header>
+  <main>
+    <div class="panel-wrap">
+      <section class="panel">
+        <span class="corner tl">★</span>
+        <span class="corner tr">★</span>
+        <span class="corner bl">★</span>
+        <span class="corner br">★</span>
+
+        <label class="field" for="names">
+          <span class="label-text">The Roster</span>
+          <textarea
+            id="names"
+            placeholder="One name per line, or comma-separated&#10;e.g. Ada, Linus, Grace"
+          ></textarea>
+        </label>
+        <div class="row">
+          <label class="field" for="picker">
+            <span class="label-text">The Contraption</span>
+            <select id="picker"></select>
+          </label>
+          <label class="field" for="time">
+            <span class="label-text">Spin Time</span>
+            <input id="time" type="number" min="0.8" max="8" step="0.1" value="3" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="spin" class="primary" type="button">Spin the Wheel</button>
+          <button id="share" class="secondary" type="button">Copy URL</button>
+        </div>
+        <div id="preview" class="preview" aria-live="polite"></div>
+        <div class="hint">
+          <b>Keys</b> <code>Space</code> / <code>Enter</code> spin &middot; <code>Esc</code> cancel.<br />
+          <b>URL</b> <code>?c1=ada&amp;c2=linus&amp;time=5</code> (wheeldecide-style),
+          or <code>?names=ada,linus&amp;picker=wheel&amp;time=5</code>.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /********** CONFIG (only picker-relevant bits) **********/
+    const CONFIG = {
+      spinDuration: 3000,
+      extraSpin: 360 * 5,
+      wheelSize: 400,
+      tickerSize: 20,
+      segmentColors: ['#e9f2ff', '#d6e4ff', '#e81dbb','#09c5a7','#e9cdb6','#4c4349','#0cc846'],
+    };
+
+    /********** Picker registry **********/
+    const PICKER_REGISTRY = [
+      { id: 'wheel',      label: 'Wheel',            getFn: () => showWheelPopup },
+      { id: 'dice',       label: 'Dice',             getFn: () => showDicePopup },
+      { id: 'lotto',      label: 'Lotto',            getFn: () => showLottoPopup },
+      { id: 'slot',       label: 'Slot machine',     getFn: () => showSlotMachinePopup },
+      { id: 'plinko',     label: 'Plinko',           getFn: () => showPlinkoPopup },
+      { id: 'roulette',   label: 'Russian roulette', getFn: () => showRouletteCylinderPopup },
+      { id: 'horses',     label: 'Horse race',       getFn: () => showHorseRacePopup },
+      { id: 'fortune',    label: 'Fortune cookie',   getFn: () => showFortuneCookiePopup },
+      { id: 'f1',         label: 'F1 race',          getFn: () => showF1Popup },
+      { id: 'hack',       label: 'Hack terminal',    getFn: () => showHackTerminalPopup },
+      { id: 'lightning',  label: 'Lightning',        getFn: () => showLightningPopup },
+      { id: 'domino',     label: 'Domino chain',     getFn: () => showDominoChainPopup },
+      { id: 'sortinghat', label: 'Sorting hat',      getFn: () => showSortingHatPopup },
+      { id: 'torch',      label: 'Torch snuff',      getFn: () => showTorchSnuffPopup },
+      { id: 'squidgame',  label: 'Squid Game',       getFn: () => showSquidGamePopup },
+      { id: 'capybara',   label: 'Capybara tub',     getFn: () => showCapybaraTubPopup },
+      { id: 'tarot',      label: 'Tarot reveal',     getFn: () => showTarotPopup },
+      { id: 'claw',       label: 'Claw machine',     getFn: () => showClawMachinePopup },
+      { id: 'hotpotato',  label: 'Hot potato',       getFn: () => showHotPotatoPopup },
+      { id: 'blackjack',  label: 'Blackjack table',  getFn: () => showBlackjackPopup },
+    ];
+
+    /** Build the standard dimmed-overlay container used by every picker animation. */
+    function createPickerOverlay() {
+      const overlay = document.createElement('div');
+      overlay.dataset.standupOverlay = 'picker';
+      overlay.style.cssText =
+        'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'gap:24px;z-index:9999;perspective:1400px;';
+      return overlay;
+    }
+
+    let _suppressedReveals = 0;
+
+    /** Dismiss every active overlay. Suppress any in-flight revealWinner calls. */
+    function dismissActiveOverlays() {
+      document.querySelectorAll('[data-standup-overlay]').forEach(el => {
+        if (el.dataset.standupOverlay === 'picker') {
+          _suppressedReveals++;
+        }
+        el.remove();
+      });
+    }
+
+    /** Deterministic SVG-data-URL avatar from a name (no network calls). */
+    const AVATAR_PALETTE = [
+      '#e81dbb', '#0cc846', '#ff9500', '#007aff', '#5856d6',
+      '#af52de', '#ff2d55', '#34c759', '#ff3b30', '#ffcc00',
+      '#1abc9c', '#3498db', '#e67e22', '#9b59b6', '#2ecc71',
+      '#e74c3c', '#f39c12', '#16a085', '#27ae60', '#d35400',
+    ];
+    const _avatarCache = new Map();
+    function hashString(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = (h << 5) - h + s.charCodeAt(i);
+        h |= 0;
+      }
+      return Math.abs(h);
+    }
+    function getInitials(name) {
+      const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return '?';
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    function generateAvatar(name) {
+      const key = String(name || '');
+      if (_avatarCache.has(key)) return _avatarCache.get(key);
+      const initials = getInitials(key);
+      const color = AVATAR_PALETTE[hashString(key.toLowerCase()) % AVATAR_PALETTE.length];
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+        '<circle cx="64" cy="64" r="64" fill="' + color + '"/>' +
+        '<text x="50%" y="50%" dy="0.36em" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif" font-size="56" font-weight="700" fill="#ffffff">' +
+        initials +
+        '</text></svg>';
+      const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+      _avatarCache.set(key, url);
+      return url;
+    }
+
+    /** Build people array from a list of name strings. */
+    function buildPeople(names) {
+      return names
+        .map(s => String(s).trim())
+        .filter(Boolean)
+        .map((name, i) => ({ name, avatarUrl: generateAvatar(name), id: 'p' + i }));
+    }
+
+    /** Confetti shower used by the winner modal. Verbatim from the source. */
+    function createConfetti(container) {
+      const colors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#007aff', '#5856d6', '#af52de', '#ff2d55'];
+      const confettiCount = 100;
+      for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        const size = Math.random() * 8 + 4;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const startX = Math.random() * 100;
+        const duration = Math.random() * 2000 + 2000;
+        const delay = Math.random() * 500;
+        const rotation = Math.random() * 360;
+        confetti.style.position = 'absolute';
+        confetti.style.width = size + 'px';
+        confetti.style.height = size + 'px';
+        confetti.style.backgroundColor = color;
+        confetti.style.left = startX + '%';
+        confetti.style.top = '-10px';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        confetti.style.opacity = '0';
+        confetti.style.pointerEvents = 'none';
+        confetti.style.zIndex = '10000';
+        container.appendChild(confetti);
+        setTimeout(() => {
+          confetti.style.transition = 'all ' + duration + 'ms ease-out';
+          confetti.style.opacity = '1';
+          confetti.style.transform = 'translateY(' + (window.innerHeight + 100) + 'px) rotate(' + (rotation + 720) + 'deg)';
+          confetti.style.left = (startX + (Math.random() - 0.5) * 20) + '%';
+        }, delay);
+        setTimeout(() => { confetti.remove(); }, delay + duration);
+      }
+    }
+
+    /** Simplified winner modal: avatar + name, dismissed by click / Esc / Enter. */
+    function showWinnerPopup(winnerName, winnerAvatar) {
+      const popupOverlay = document.createElement('div');
+      popupOverlay.dataset.standupOverlay = 'modal';
+      popupOverlay.style.cssText =
+        'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.5);' +
+        'display:flex;align-items:center;justify-content:center;z-index:10001;animation:fadeIn 0.3s ease-out;';
+
+      const style = document.createElement('style');
+      style.textContent =
+        '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }' +
+        '@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }' +
+        '@keyframes bounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }';
+      document.head.appendChild(style);
+
+      const popup = document.createElement('div');
+      popup.style.cssText =
+        'background:#fff;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,0.3);' +
+        'text-align:center;max-width:400px;width:90%;position:relative;animation:slideUp 0.4s ease-out;z-index:10002;color:#333;';
+
+      const emoji = document.createElement('div');
+      emoji.textContent = '\uD83C\uDF89';
+      emoji.style.cssText = 'font-size:64px;margin-bottom:16px;animation:bounce 0.6s ease-in-out 3;';
+      popup.appendChild(emoji);
+
+      const title = document.createElement('div');
+      title.textContent = 'And the pick is\u2026';
+      title.style.cssText = 'font-size:18px;color:#666;margin-bottom:12px;font-weight:500;';
+      popup.appendChild(title);
+
+      const avatar = document.createElement('img');
+      avatar.src = winnerAvatar;
+      avatar.style.cssText = 'width:96px;height:96px;border-radius:50%;margin-bottom:16px;border:4px solid #4c6ef5;object-fit:cover;';
+      popup.appendChild(avatar);
+
+      const name = document.createElement('div');
+      name.textContent = winnerName;
+      name.style.cssText = 'font-size:28px;font-weight:700;color:#333;margin-bottom:24px;';
+      popup.appendChild(name);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = 'Spin again';
+      closeBtn.style.cssText =
+        'padding:12px 32px;border-radius:10px;border:none;background:#4c6ef5;color:#fff;' +
+        'font-size:15px;font-weight:600;cursor:pointer;transition:background 0.15s;';
+      closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#3b5bdb'; });
+      closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = '#4c6ef5'; });
+
+      const closeModal = () => {
+        popupOverlay.style.animation = 'fadeIn 0.15s ease-out reverse';
+        setTimeout(() => {
+          popupOverlay.remove();
+          style.remove();
+        }, 150);
+      };
+      closeBtn.addEventListener('click', closeModal);
+      popup.appendChild(closeBtn);
+
+      popupOverlay.appendChild(popup);
+      document.body.appendChild(popupOverlay);
+      createConfetti(popupOverlay);
+
+      popupOverlay.addEventListener('click', (e) => {
+        if (e.target === popupOverlay) closeModal();
+      });
+    }
+
+    /** Simplified shared post-pick reveal. */
+    function revealWinner(order, targetIndex) {
+      if (_suppressedReveals > 0) {
+        _suppressedReveals--;
+        return;
+      }
+      const winner = order[targetIndex];
+      showWinnerPopup(winner.name, winner.avatarUrl);
+    }
+
+    /* ======================== 20 picker animations (verbatim from source) ======================== */
+  function showWheelPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const size = CONFIG.wheelSize;
+    const tickerSize = CONFIG.tickerSize;
+    const num = order.length;
+    const segmentAngle = 360 / num;
+
+    const wheelContainer = document.createElement('div');
+    wheelContainer.style.cssText =
+      `position:relative;width:${size + 60}px;height:${size + 60 + tickerSize}px;` +
+      'display:flex;align-items:center;justify-content:center;';
+    overlay.appendChild(wheelContainer);
+
+    // Outer wooden rim (does not rotate)
+    const rim = document.createElement('div');
+    rim.style.cssText =
+      `position:absolute;width:${size + 50}px;height:${size + 50}px;border-radius:50%;` +
+      'background:radial-gradient(circle at 35% 30%, #6b3a18, #2a1606 75%);' +
+      'box-shadow:0 18px 40px rgba(0,0,0,0.55), inset 0 0 30px rgba(0,0,0,0.45);' +
+      'top:' + (tickerSize + 5) + 'px;';
+    wheelContainer.appendChild(rim);
+
+    // Bulb ring on the rim
+    const bulbRing = document.createElement('div');
+    bulbRing.style.cssText =
+      `position:absolute;width:${size + 40}px;height:${size + 40}px;border-radius:50%;` +
+      'top:' + (tickerSize + 10) + 'px;pointer-events:none;';
+    wheelContainer.appendChild(bulbRing);
+    const bulbCount = 18;
+    for (let b = 0; b < bulbCount; b++) {
+      const a = (b / bulbCount) * Math.PI * 2;
+      const bx = (size + 40) / 2 + ((size + 28) / 2) * Math.cos(a) - 6;
+      const by = (size + 40) / 2 + ((size + 28) / 2) * Math.sin(a) - 6;
+      const bulb = document.createElement('div');
+      bulb.style.cssText =
+        `position:absolute;left:${bx}px;top:${by}px;width:12px;height:12px;border-radius:50%;` +
+        'background:radial-gradient(circle at 35% 35%, #fff5d6, #d99a2b 65%, #6b3a18);' +
+        'box-shadow:0 0 8px rgba(255,210,120,0.7);' +
+        `animation: wheelBulb 1.2s steps(1) ${(b * 70)}ms infinite;`;
+      bulbRing.appendChild(bulb);
+    }
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes wheelBulb { 0%, 49% { filter: brightness(1); } 50%, 100% { filter: brightness(1.6); } }';
+    document.head.appendChild(styleEl);
+
+    // The rotating wheel itself
+    const wheel = document.createElement('div');
+    wheel.style.cssText =
+      `position:absolute;width:${size}px;height:${size}px;border-radius:50%;` +
+      'top:' + (tickerSize + 30) + 'px;' +
+      'box-shadow:inset 0 0 0 4px #1b110a, inset 0 0 0 6px #d99a2b, inset 0 0 0 8px #1b110a, ' +
+      '0 0 20px rgba(0,0,0,0.4);overflow:hidden;';
+
+    // Conic-gradient pie. Build stops so segments are precise pie wedges.
+    const palette = ['#c83a1e', '#f1e6cb', '#d99a2b', '#2c5d52', '#e35636', '#1b110a', '#fbf4dd'];
+    const stops = [];
+    for (let i = 0; i < num; i++) {
+      const c = palette[i % palette.length];
+      const a0 = segmentAngle * i;
+      const a1 = segmentAngle * (i + 1);
+      stops.push(`${c} ${a0}deg ${a1}deg`);
+    }
+    wheel.style.background = `conic-gradient(${stops.join(', ')})`;
+    wheelContainer.appendChild(wheel);
+
+    // SVG layer for crisp white dividers + labels (rotates with the wheel)
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+    svg.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = size / 2;
+
+    for (let i = 0; i < num; i++) {
+      const a = (segmentAngle * i - 90) * Math.PI / 180;
+      const ex = cx + r * Math.cos(a);
+      const ey = cy + r * Math.sin(a);
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', String(cx));
+      line.setAttribute('y1', String(cy));
+      line.setAttribute('x2', String(ex));
+      line.setAttribute('y2', String(ey));
+      line.setAttribute('stroke', '#1b110a');
+      line.setAttribute('stroke-width', '2');
+      svg.appendChild(line);
+    }
+
+    // Labels along each segment's midline
+    order.forEach((person, i) => {
+      const midDeg = segmentAngle * (i + 0.5);
+      // Choose ink/paper text color based on segment fill for contrast
+      const fill = palette[i % palette.length];
+      const dark = ['#c83a1e', '#2c5d52', '#1b110a', '#e35636'].includes(fill);
+      const textColor = dark ? '#fbf4dd' : '#1b110a';
+
+      const g = document.createElementNS(ns, 'g');
+      // Rotate so the segment's midline points to the right (0deg in SVG)
+      // i.e. we want midDeg to align with east. Rotation = midDeg - 90 (since 0deg is east).
+      g.setAttribute('transform', `translate(${cx} ${cy}) rotate(${midDeg - 90})`);
+
+      // Avatar near the rim
+      const labelRadius = r * 0.62;
+      const img = document.createElementNS(ns, 'image');
+      img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', person.avatarUrl);
+      img.setAttribute('href', person.avatarUrl);
+      img.setAttribute('x', String(labelRadius + 26));
+      img.setAttribute('y', '-13');
+      img.setAttribute('width', '26');
+      img.setAttribute('height', '26');
+      g.appendChild(img);
+
+      const text = document.createElementNS(ns, 'text');
+      text.textContent = String(person.name).slice(0, 14);
+      text.setAttribute('x', String(labelRadius + 18));
+      text.setAttribute('y', '5');
+      text.setAttribute('text-anchor', 'end');
+      text.setAttribute('font-family', '"Rye","Times New Roman",serif');
+      text.setAttribute('font-size', num > 10 ? '13' : '16');
+      text.setAttribute('fill', textColor);
+      g.appendChild(text);
+
+      svg.appendChild(g);
+    });
+
+    // Center hub
+    const hub = document.createElementNS(ns, 'circle');
+    hub.setAttribute('cx', String(cx));
+    hub.setAttribute('cy', String(cy));
+    hub.setAttribute('r', '22');
+    hub.setAttribute('fill', '#d99a2b');
+    hub.setAttribute('stroke', '#1b110a');
+    hub.setAttribute('stroke-width', '3');
+    svg.appendChild(hub);
+    const hubDot = document.createElementNS(ns, 'circle');
+    hubDot.setAttribute('cx', String(cx));
+    hubDot.setAttribute('cy', String(cy));
+    hubDot.setAttribute('r', '6');
+    hubDot.setAttribute('fill', '#1b110a');
+    svg.appendChild(hubDot);
+
+    wheel.appendChild(svg);
+
+    // Ticker / pointer at the top, pointing into the wheel
+    const ticker = document.createElement('div');
+    ticker.style.cssText =
+      `position:absolute;top:${tickerSize - 6}px;left:50%;transform:translateX(-50%);` +
+      `width:0;height:0;border-left:${tickerSize}px solid transparent;` +
+      `border-right:${tickerSize}px solid transparent;` +
+      `border-top:${tickerSize * 1.6}px solid #c83a1e;z-index:10;` +
+      'filter:drop-shadow(0 2px 3px rgba(0,0,0,0.5));';
+    wheelContainer.appendChild(ticker);
+    // Small gold bead on the pointer tip
+    const tip = document.createElement('div');
+    tip.style.cssText =
+      `position:absolute;top:${tickerSize - 18}px;left:50%;transform:translateX(-50%);` +
+      'width:14px;height:14px;border-radius:50%;background:#d99a2b;' +
+      'border:2px solid #1b110a;z-index:11;';
+    wheelContainer.appendChild(tip);
+
+    // Spin animation. conic-gradient starts at 12 o'clock (top) going clockwise, and the
+    // ticker is also at the top, so no extra angular offset is needed — just rotate the
+    // wheel clockwise so segment `targetIndex`'s midline lands under the ticker.
+    const finalRotation =
+      CONFIG.extraSpin - segmentAngle * targetIndex - segmentAngle / 2;
+
+    wheel.style.transition = `transform ${CONFIG.spinDuration}ms cubic-bezier(0.33, 1, 0.68, 1)`;
+    setTimeout(() => {
+      wheel.style.transform = `rotate(${finalRotation}deg)`;
+    }, 50);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+
+    document.body.appendChild(overlay);
+  }
+
+  /** 3D dice roll picker. Builds a CSS cube with up to 6 participants on its faces (winner
+   *  is on the front face), tumbles it for `CONFIG.spinDuration`, then settles with the
+   *  winner facing the camera. */
+  function showDicePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const cubeSize = 240;
+    const half = cubeSize / 2;
+
+    const stage = document.createElement('div');
+    stage.style.cssText = `width:${cubeSize}px;height:${cubeSize}px;position:relative;transform-style:preserve-3d;`;
+
+    const cube = document.createElement('div');
+    cube.style.cssText =
+      `position:absolute;inset:0;transform-style:preserve-3d;` +
+      `transition:transform ${CONFIG.spinDuration}ms cubic-bezier(0.2, 0.8, 0.2, 1);` +
+      `transform:rotateX(0deg) rotateY(0deg);`;
+    stage.appendChild(cube);
+
+    // Face order: winner on front; subsequent participants fill the remaining faces.
+    const faceTransforms = [
+      `translateZ(${half}px)`,                     // 0 front  (winner)
+      `rotateY(180deg) translateZ(${half}px)`,     // 1 back
+      `rotateY(90deg)  translateZ(${half}px)`,     // 2 right
+      `rotateY(-90deg) translateZ(${half}px)`,     // 3 left
+      `rotateX(90deg)  translateZ(${half}px)`,     // 4 top
+      `rotateX(-90deg) translateZ(${half}px)`,     // 5 bottom
+    ];
+    const faceColors = ['#e9f2ff','#d6e4ff','#e9cdb6','#0cc846','#ff9500','#5856d6'];
+
+    for (let i = 0; i < 6; i++) {
+      const person = order[(targetIndex + i) % order.length];
+      const face = document.createElement('div');
+      face.style.cssText =
+        `position:absolute;inset:0;transform:${faceTransforms[i]};` +
+        `background:${faceColors[i]};border:3px solid #2a2a2a;border-radius:18px;` +
+        `display:flex;flex-direction:column;align-items:center;justify-content:center;` +
+        `gap:10px;font-size:15px;font-weight:600;color:#222;` +
+        `box-shadow:inset 0 0 30px rgba(0,0,0,0.18);backface-visibility:hidden;`;
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,0.2);';
+      face.appendChild(img);
+
+      const label = document.createElement('span');
+      label.textContent = person.name;
+      label.style.textShadow = '0 1px 2px rgba(255,255,255,0.5)';
+      face.appendChild(label);
+
+      cube.appendChild(face);
+    }
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Tumble: random multiples of 360deg on each axis so the front face (winner) lands forward.
+    const xSpins = 4 + Math.floor(Math.random() * 3);
+    const ySpins = 5 + Math.floor(Math.random() * 3);
+    setTimeout(() => {
+      cube.style.transform = `rotateX(${xSpins * 360}deg) rotateY(${ySpins * 360}deg)`;
+    }, 50);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Lotto / bingo ball drop picker. Balls bounce around a circular drum, then the winning
+   *  ball ejects out the bottom and lands in a tray that reveals the name. */
+  function showLottoPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const drumSize = 320;
+    const ballSize = 54;
+
+    const drum = document.createElement('div');
+    drum.style.cssText =
+      `position:relative;width:${drumSize}px;height:${drumSize}px;border-radius:50%;` +
+      `border:8px solid #333;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.02));` +
+      `box-shadow:0 0 40px rgba(0,0,0,0.6),inset 0 0 40px rgba(0,0,0,0.55);overflow:hidden;`;
+    overlay.appendChild(drum);
+
+    const tray = document.createElement('div');
+    tray.style.cssText =
+      'width:280px;min-height:80px;border:4px solid #333;border-radius:14px;' +
+      'background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;gap:12px;' +
+      'color:#fff;font-size:18px;font-weight:600;opacity:0.6;transition:opacity 0.3s,background 0.3s;padding:10px 16px;';
+    tray.textContent = '...';
+    overlay.appendChild(tray);
+
+    const ballColors = ['#ff3b30','#ff9500','#ffcc00','#34c759','#007aff','#5856d6','#af52de','#ff2d55','#0cc846','#e81dbb'];
+    const ballEls = [];
+    const styleEl = document.createElement('style');
+    document.head.appendChild(styleEl);
+
+    order.forEach((person, i) => {
+      const ball = document.createElement('div');
+      const color = ballColors[i % ballColors.length];
+      const startX = Math.random() * (drumSize - ballSize);
+      const startY = Math.random() * (drumSize - ballSize);
+      const dx = (Math.random() - 0.5) * 80;
+      const dy = (Math.random() - 0.5) * 80;
+      const dur = 0.45 + Math.random() * 0.4;
+      const delay = Math.random() * 0.3;
+      const animName = `lottoBounce_${Date.now()}_${i}`;
+
+      styleEl.textContent +=
+        `@keyframes ${animName} { from { transform: translate(0,0) rotate(0deg); }` +
+        ` to { transform: translate(${dx}px, ${dy}px) rotate(${(Math.random() - 0.5) * 60}deg); } }`;
+
+      ball.style.cssText =
+        `position:absolute;left:${startX}px;top:${startY}px;width:${ballSize}px;height:${ballSize}px;` +
+        `border-radius:50%;background:radial-gradient(circle at 30% 30%, #fff, ${color} 60%, ${color} 100%);` +
+        `box-shadow:0 4px 10px rgba(0,0,0,0.4),inset -4px -4px 8px rgba(0,0,0,0.25);` +
+        `display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid rgba(255,255,255,0.6);` +
+        `animation:${animName} ${dur}s ease-in-out ${delay}s infinite alternate;`;
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = `width:${ballSize - 14}px;height:${ballSize - 14}px;border-radius:50%;object-fit:cover;`;
+      ball.appendChild(img);
+
+      drum.appendChild(ball);
+      ballEls.push(ball);
+    });
+
+    document.body.appendChild(overlay);
+
+    // After ~80% of the spin, eject the winning ball into the tray.
+    const dropAt = Math.max(800, CONFIG.spinDuration - 700);
+    setTimeout(() => {
+      const winnerBall = ballEls[targetIndex];
+      ballEls.forEach((b, i) => {
+        if (i !== targetIndex) {
+          b.style.transition = 'opacity 0.4s';
+          b.style.opacity = '0.18';
+        }
+      });
+      if (winnerBall) {
+        const trayRect = tray.getBoundingClientRect();
+        const ballRect = winnerBall.getBoundingClientRect();
+        const dx = (trayRect.left + trayRect.width / 2) - (ballRect.left + ballRect.width / 2);
+        const dy = (trayRect.top + trayRect.height / 2) - (ballRect.top + ballRect.height / 2);
+        // Let the ball escape the drum's clip on the way out.
+        drum.style.overflow = 'visible';
+        winnerBall.style.zIndex = '10';
+        winnerBall.style.animation = 'none';
+        winnerBall.style.transition = 'transform 0.55s cubic-bezier(0.5, -0.2, 0.7, 0.1)';
+        winnerBall.style.transform = `translate(${dx}px, ${dy}px) scale(1.35)`;
+      }
+      setTimeout(() => {
+        const winner = order[targetIndex];
+        tray.textContent = '';
+        const trayImg = document.createElement('img');
+        trayImg.src = winner.avatarUrl;
+        trayImg.style.cssText = 'width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #fff;';
+        const trayName = document.createElement('span');
+        trayName.textContent = winner.name;
+        tray.appendChild(trayImg);
+        tray.appendChild(trayName);
+        tray.style.opacity = '1';
+        tray.style.background = 'rgba(255,255,255,0.18)';
+      }, 550);
+    }, dropAt);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Slot machine: 3 vertical reels of avatars roll past, all three lock onto the winner.
+   *  Reels stop at staggered times for a satisfying "ka-chunk ka-chunk ka-chunk" feel. */
+  function showSlotMachinePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+
+    const machine = document.createElement('div');
+    machine.style.cssText =
+      'background:linear-gradient(135deg,#c41e3a,#7a0e1f);border:8px solid #ffcc00;' +
+      'border-radius:24px;padding:24px 24px 16px;display:flex;flex-direction:column;align-items:center;' +
+      'gap:14px;box-shadow:0 0 40px rgba(255,204,0,0.5),inset 0 0 20px rgba(0,0,0,0.4);';
+
+    const jackpot = document.createElement('div');
+    jackpot.textContent = '★ JACKPOT ★';
+    jackpot.style.cssText = 'color:#ffcc00;font-weight:900;font-size:18px;letter-spacing:4px;text-shadow:0 2px 4px rgba(0,0,0,0.6);';
+    machine.appendChild(jackpot);
+
+    const reelsRow = document.createElement('div');
+    reelsRow.style.cssText = 'display:flex;gap:8px;background:#1a1a1a;padding:10px;border-radius:10px;border:3px solid #444;';
+    machine.appendChild(reelsRow);
+
+    const reelW = 110;
+    const slotH = 110;
+    const stripLen = 30;
+    const stopDelays = [600, 1500, 2500];
+
+    for (let r = 0; r < 3; r++) {
+      const reelWindow = document.createElement('div');
+      reelWindow.style.cssText = `width:${reelW}px;height:${slotH}px;overflow:hidden;background:#fff;border-radius:6px;position:relative;border:2px solid #333;`;
+
+      const reel = document.createElement('div');
+      reel.style.cssText = 'position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;';
+
+      // Build the strip: random people throughout, winner placed at the last slot so the reel
+      // can land with the winner centered in the window.
+      const strip = [];
+      for (let i = 0; i < stripLen; i++) {
+        strip.push(order[Math.floor(Math.random() * order.length)]);
+      }
+      strip[stripLen - 1] = winner;
+
+      strip.forEach(p => {
+        const slot = document.createElement('div');
+        slot.style.cssText = `flex-shrink:0;height:${slotH}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;color:#222;`;
+        const img = document.createElement('img');
+        img.src = p.avatarUrl;
+        img.style.cssText = 'width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #ffcc00;';
+        const name = document.createElement('span');
+        name.textContent = p.name.split(' ')[0].slice(0, 10);
+        slot.appendChild(img);
+        slot.appendChild(name);
+        reel.appendChild(slot);
+      });
+
+      reelWindow.appendChild(reel);
+      reelsRow.appendChild(reelWindow);
+
+      const finalTop = -((stripLen - 1) * slotH);
+      setTimeout(() => {
+        reel.style.transition = `top ${stopDelays[r]}ms cubic-bezier(0.25, 0.1, 0.2, 1)`;
+        reel.style.top = `${finalTop}px`;
+      }, 50);
+    }
+
+    overlay.appendChild(machine);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Plinko: a ball drops from the top of a peg board, zigzags down through pegs, lands in the
+   *  winner's slot at the bottom. Path is a biased random walk that always converges to the target. */
+  function showPlinkoPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const w = 380;
+    const h = 460;
+    const board = document.createElement('div');
+    board.style.cssText =
+      `position:relative;width:${w}px;height:${h}px;background:linear-gradient(180deg,#1a1a2e,#0f0f1e);` +
+      `border-radius:14px;border:3px solid #555;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,0.5);`;
+
+    // Pegs: 7 staggered rows
+    const rows = 7;
+    const topPad = 50;
+    const bottomPad = 110;
+    const pegSize = 6;
+    for (let r = 0; r < rows; r++) {
+      const pegsInRow = r + 4;
+      const rowY = topPad + (r / (rows - 1)) * (h - topPad - bottomPad);
+      const spacing = w / (pegsInRow + 1);
+      for (let c = 0; c < pegsInRow; c++) {
+        const peg = document.createElement('div');
+        peg.style.cssText =
+          `position:absolute;left:${spacing * (c + 1) - pegSize / 2}px;top:${rowY}px;` +
+          `width:${pegSize}px;height:${pegSize}px;border-radius:50%;background:#ddd;box-shadow:0 0 4px #fff;`;
+        board.appendChild(peg);
+      }
+    }
+
+    // Slots along the bottom: shuffle the visual layout so the winner's column is random
+    // each spin (otherwise targetIndex=0 always means the leftmost slot).
+    const slotCount = order.length;
+    const slotW = w / slotCount;
+    const slotY = h - bottomPad + 10;
+
+    const slotLayout = order.map((_, i) => i);
+    for (let i = slotLayout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [slotLayout[i], slotLayout[j]] = [slotLayout[j], slotLayout[i]];
+    }
+    const winnerVisualSlot = slotLayout.indexOf(targetIndex);
+
+    let winnerSlotEl = null;
+    let winnerSlotImg = null;
+    slotLayout.forEach((orderIdx, visualIdx) => {
+      const p = order[orderIdx];
+      const slot = document.createElement('div');
+      const isWinner = orderIdx === targetIndex;
+      slot.style.cssText =
+        `position:absolute;left:${visualIdx * slotW}px;top:${slotY}px;width:${slotW}px;height:${bottomPad - 10}px;` +
+        `border-left:1px solid #444;border-right:1px solid #444;display:flex;flex-direction:column;` +
+        `align-items:center;justify-content:flex-end;padding-bottom:10px;gap:4px;color:#fff;font-size:9px;text-align:center;` +
+        `transition:background 0.3s ease-out, box-shadow 0.3s ease-out;`;
+      const img = document.createElement('img');
+      img.src = p.avatarUrl;
+      img.style.cssText = 'width:26px;height:26px;border-radius:50%;object-fit:cover;opacity:0.7;transition:opacity 0.3s ease-out;';
+      const name = document.createElement('span');
+      name.textContent = p.name.split(' ')[0].slice(0, 8);
+      name.style.opacity = '0.85';
+      slot.appendChild(img);
+      slot.appendChild(name);
+      board.appendChild(slot);
+      if (isWinner) {
+        winnerSlotEl = slot;
+        winnerSlotImg = img;
+      }
+    });
+
+    // Ball: starts above the first row, biased random-walks down to the winner's slot
+    const ballSize = 16;
+    const startX = w / 2;
+    const startY = 18;
+    const ball = document.createElement('div');
+    ball.style.cssText =
+      `position:absolute;left:${startX - ballSize / 2}px;top:${startY}px;width:${ballSize}px;height:${ballSize}px;` +
+      `border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#ff3b30 60%);` +
+      `box-shadow:0 0 10px rgba(255,59,48,0.6);z-index:10;`;
+    board.appendChild(ball);
+
+    const targetX = (winnerVisualSlot + 0.5) * slotW;
+    const waypoints = [];
+    let curX = startX;
+    for (let r = 0; r < rows; r++) {
+      const rowY = topPad + (r / (rows - 1)) * (h - topPad - bottomPad);
+      const remaining = rows - r;
+      const drift = (targetX - curX) / remaining;
+      const jitter = (Math.random() - 0.5) * 50;
+      curX = Math.max(20, Math.min(w - 20, curX + drift * 1.4 + jitter * 0.6));
+      waypoints.push({ x: curX, y: rowY + 8 });
+    }
+    waypoints.push({ x: targetX, y: slotY + 35 });
+
+    overlay.appendChild(board);
+    document.body.appendChild(overlay);
+
+    const stepMs = (CONFIG.spinDuration - 200) / waypoints.length;
+    waypoints.forEach((wp, i) => {
+      setTimeout(() => {
+        ball.style.transition = `left ${stepMs}ms cubic-bezier(0.45,0,0.55,1), top ${stepMs}ms cubic-bezier(0.4,0,0.7,1)`;
+        ball.style.left = `${wp.x - ballSize / 2}px`;
+        ball.style.top = `${wp.y}px`;
+      }, 80 + i * stepMs);
+    });
+
+    // Light up the winner slot only when the ball reaches the bottom row.
+    const landAt = 80 + waypoints.length * stepMs;
+    setTimeout(() => {
+      if (winnerSlotEl) {
+        winnerSlotEl.style.background = 'linear-gradient(180deg,transparent,rgba(52,199,89,0.45))';
+        winnerSlotEl.style.boxShadow = 'inset 0 -22px 28px rgba(52,199,89,0.35)';
+      }
+      if (winnerSlotImg) {
+        winnerSlotImg.style.opacity = '1';
+      }
+    }, landAt);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Russian-roulette cylinder: chambers arranged radially around a revolver cylinder; the
+   *  cylinder spins and lands with the winner under the firing-position pointer. */
+  function showRouletteCylinderPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const cylSize = 340;
+    const chSize = 64;
+    const radius = cylSize / 2 - chSize / 2 - 22;
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `position:relative;width:${cylSize}px;height:${cylSize}px;`;
+
+    const pointer = document.createElement('div');
+    pointer.style.cssText =
+      'position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:0;height:0;' +
+      'border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid #ff3b30;' +
+      'z-index:10;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));transition:filter 0.15s;';
+    wrap.appendChild(pointer);
+
+    const cylinder = document.createElement('div');
+    cylinder.style.cssText =
+      `position:absolute;inset:0;border-radius:50%;` +
+      `background:radial-gradient(circle at 30% 30%,#888,#222);border:6px solid #1a1a1a;` +
+      `box-shadow:0 0 30px rgba(0,0,0,0.6),inset 0 0 30px rgba(0,0,0,0.5);` +
+      `transition:transform ${CONFIG.spinDuration}ms cubic-bezier(0.2,0.7,0.2,1);transform:rotate(0deg);`;
+
+    const n = order.length;
+    // Place winner at angular position 0 (top, under the pointer); fill the rest clockwise.
+    for (let i = 0; i < n; i++) {
+      const person = order[(targetIndex + i) % n];
+      const angleDeg = (i / n) * 360;
+      const rad = (angleDeg - 90) * Math.PI / 180;
+      const cx = cylSize / 2 + radius * Math.cos(rad) - chSize / 2;
+      const cy = cylSize / 2 + radius * Math.sin(rad) - chSize / 2;
+
+      const chamber = document.createElement('div');
+      chamber.style.cssText =
+        `position:absolute;left:${cx}px;top:${cy}px;width:${chSize}px;height:${chSize}px;` +
+        `border-radius:50%;background:#1a1a1a;border:3px solid #444;` +
+        `box-shadow:inset 0 0 10px rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;overflow:hidden;`;
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = `width:${chSize - 12}px;height:${chSize - 12}px;border-radius:50%;object-fit:cover;opacity:0.85;`;
+      chamber.appendChild(img);
+      cylinder.appendChild(chamber);
+    }
+
+    wrap.appendChild(cylinder);
+    overlay.appendChild(wrap);
+    document.body.appendChild(overlay);
+
+    const spins = 5 + Math.floor(Math.random() * 3);
+    setTimeout(() => {
+      cylinder.style.transform = `rotate(${spins * 360}deg)`;
+    }, 50);
+
+    // BANG! flash + overlay text when the cylinder locks
+    setTimeout(() => {
+      pointer.style.filter = 'drop-shadow(0 0 24px #ffcc00) brightness(2.2)';
+
+      const bang = document.createElement('div');
+      bang.textContent = '💥 BANG! 💥';
+      bang.style.cssText =
+        `position:absolute;top:50%;left:50%;` +
+        `transform:translate(-50%,-50%) scale(0) rotate(${(Math.random() - 0.5) * 16}deg);` +
+        `font-size:64px;font-weight:900;color:#ffcc00;` +
+        `text-shadow:0 0 14px #ff3b30, 0 0 28px #ff3b30, 4px 4px 0 #000;` +
+        `letter-spacing:4px;z-index:20;pointer-events:none;white-space:nowrap;` +
+        `transition:transform 0.28s cubic-bezier(0.34, 1.8, 0.64, 1);`;
+      wrap.appendChild(bang);
+
+      // Brief muzzle flash overlay across the whole wrap
+      const flash = document.createElement('div');
+      flash.style.cssText =
+        'position:absolute;inset:-40px;background:radial-gradient(circle,rgba(255,204,0,0.55) 0%,rgba(255,59,48,0.35) 30%,transparent 60%);' +
+        'pointer-events:none;z-index:15;opacity:0;transition:opacity 0.12s ease-out;';
+      wrap.appendChild(flash);
+
+      requestAnimationFrame(() => {
+        bang.style.transform = `translate(-50%,-50%) scale(1.15) rotate(${(Math.random() - 0.5) * 10}deg)`;
+        flash.style.opacity = '1';
+      });
+      setTimeout(() => { flash.style.opacity = '0'; }, 220);
+    }, CONFIG.spinDuration);
+
+    // Hold the BANG on screen so you actually see it before the winner popup opens.
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 800);
+  }
+
+  /** Horse race: each participant gets a lane with a horse + avatar; horses gallop toward the
+   *  finish line, the winner crosses first while the others stop just short. */
+  function showHorseRacePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const trackW = 620;
+    const laneH = 52;
+    const trackPadTop = 24;
+    const totalH = order.length * laneH + trackPadTop + 12;
+    const finishX = trackW - 50;
+
+    const track = document.createElement('div');
+    track.style.cssText =
+      `position:relative;width:${trackW}px;height:${totalH}px;` +
+      `background:linear-gradient(180deg,#87ceeb 0%,#87ceeb ${(trackPadTop / totalH) * 100}%,#7cfc00 ${(trackPadTop / totalH) * 100}%,#5fb800 100%);` +
+      `border-radius:10px;border:3px solid #333;overflow:hidden;box-shadow:0 0 30px rgba(0,0,0,0.4);`;
+
+    const finishLine = document.createElement('div');
+    finishLine.style.cssText =
+      `position:absolute;left:${finishX}px;top:0;bottom:0;width:10px;` +
+      `background:repeating-linear-gradient(180deg,#fff 0,#fff 10px,#000 10px,#000 20px);z-index:1;`;
+    track.appendChild(finishLine);
+
+    const finishFlag = document.createElement('div');
+    finishFlag.textContent = '🏁';
+    finishFlag.style.cssText = `position:absolute;left:${finishX - 8}px;top:-2px;font-size:22px;z-index:2;`;
+    track.appendChild(finishFlag);
+
+    // Shuffle the lane assignment so the winner doesn't always end up in the top lane.
+    const laneLayout = order.map((_, i) => i);
+    for (let i = laneLayout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [laneLayout[i], laneLayout[j]] = [laneLayout[j], laneLayout[i]];
+    }
+
+    const horses = [];
+    laneLayout.forEach((orderIdx, laneIdx) => {
+      const person = order[orderIdx];
+      const lane = document.createElement('div');
+      lane.style.cssText =
+        `position:absolute;left:0;right:0;top:${trackPadTop + laneIdx * laneH}px;height:${laneH}px;` +
+        `border-bottom:1px dashed rgba(0,0,0,0.25);`;
+
+      const horse = document.createElement('div');
+      // Per-horse easing varies the speed profile so the race doesn't look mechanical.
+      const easeY = 0.3 + Math.random() * 0.5;
+      horse.style.cssText =
+        `position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:4px;font-size:24px;z-index:2;` +
+        `transition:left ${CONFIG.spinDuration - 100}ms cubic-bezier(0.3, ${easeY.toFixed(2)}, 0.7, 1);`;
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.3);';
+      const horseEmoji = document.createElement('span');
+      horseEmoji.textContent = '🐎';
+      const nameTag = document.createElement('span');
+      nameTag.textContent = person.name.split(' ')[0].slice(0, 10);
+      nameTag.style.cssText = 'font-size:11px;font-weight:700;color:#222;background:rgba(255,255,255,0.85);padding:2px 6px;border-radius:4px;';
+
+      horse.appendChild(img);
+      horse.appendChild(horseEmoji);
+      horse.appendChild(nameTag);
+      lane.appendChild(horse);
+      track.appendChild(lane);
+      horses.push({ horse, isWinner: orderIdx === targetIndex });
+    });
+
+    overlay.appendChild(track);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+      horses.forEach(({ horse, isWinner }) => {
+        const finalX = isWinner
+          ? finishX - 22                          // winner crosses (and slightly past) the line
+          : finishX - 80 - Math.random() * 110;   // others lag at varying distances
+        horse.style.left = `${finalX}px`;
+      });
+    }, 50);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Fortune cookie: emoji cookie shakes, then disappears as a fortune slip slides up
+   *  bearing the winner's name + a row of "lucky numbers". */
+  function showFortuneCookiePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+
+    const stage = document.createElement('div');
+    stage.style.cssText = 'position:relative;width:340px;height:280px;display:flex;align-items:center;justify-content:center;';
+
+    const shakeName = `cookieShake_${Date.now()}`;
+    const slideName = `paperSlideIn_${Date.now()}`;
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      `@keyframes ${shakeName} { from { transform: translate(-50%,-50%) rotate(-9deg); } to { transform: translate(-50%,-50%) rotate(9deg); } }` +
+      `@keyframes ${slideName} { from { transform: translate(-50%,calc(-50% + 60px)) scale(0.6); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }`;
+    document.head.appendChild(styleEl);
+
+    const cookie = document.createElement('div');
+    cookie.textContent = '🥠';
+    cookie.style.cssText =
+      `position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);` +
+      `font-size:160px;line-height:1;animation:${shakeName} 0.13s ease-in-out infinite alternate;` +
+      `transition:opacity 0.35s,transform 0.35s;`;
+    stage.appendChild(cookie);
+
+    const fortune = document.createElement('div');
+    fortune.style.cssText =
+      'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);opacity:0;' +
+      'background:#fffaf0;border:2px solid #d4af37;border-radius:8px;padding:18px 28px;' +
+      'display:flex;flex-direction:column;align-items:center;gap:10px;' +
+      'box-shadow:0 8px 20px rgba(0,0,0,0.4);font-family:Georgia,serif;color:#333;min-width:220px;';
+
+    const fortuneImg = document.createElement('img');
+    fortuneImg.src = winner.avatarUrl;
+    fortuneImg.style.cssText = 'width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #d4af37;';
+
+    const fortuneText = document.createElement('div');
+    fortuneText.textContent = winner.name;
+    fortuneText.style.cssText = 'font-size:18px;font-style:italic;font-weight:700;text-align:center;';
+
+    const luckyNums = document.createElement('div');
+    luckyNums.style.cssText = 'font-size:11px;color:#888;letter-spacing:2px;';
+    luckyNums.textContent = 'Lucky: ' + Array.from({ length: 5 }, () => Math.floor(Math.random() * 90) + 10).join('  ');
+
+    fortune.appendChild(fortuneImg);
+    fortune.appendChild(fortuneText);
+    fortune.appendChild(luckyNums);
+    stage.appendChild(fortune);
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Crack open ~600ms before the spin window ends so the fortune is readable.
+    const crackAt = Math.max(800, CONFIG.spinDuration - 1200);
+    setTimeout(() => {
+      cookie.style.animation = 'none';
+      cookie.style.opacity = '0';
+      cookie.style.transform = 'translate(-50%,-50%) scale(0.5) rotate(25deg)';
+      fortune.style.animation = `${slideName} 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`;
+    }, crackAt);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** F1 race: cars rip around a closed stadium-shaped track using CSS offset-path so each
+   *  car follows the racing line and rotates to face the direction of motion. Each car gets
+   *  its own concentric path (its "lane"), so cars never overlap. The winner runs exactly
+   *  2 full laps so they land on the start/finish line; everyone else falls 2-22% short. */
+  function showF1Popup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const w = 720;
+    const h = 360;
+    // Local duration: F1 looks better with a bit more time to enjoy the laps.
+    const f1Duration = Math.max(CONFIG.spinDuration, 4000);
+    const numLaps = 2;
+
+    // Stadium path generator: positive L = outer lane, negative L = inner lane.
+    const stadiumPath = (L) =>
+      `M 170,${40 - L} L 550,${40 - L} ` +
+      `A ${140 + L},${140 + L} 0 0 1 550,${320 + L} ` +
+      `L 170,${320 + L} ` +
+      `A ${140 + L},${140 + L} 0 0 1 170,${40 - L} Z`;
+
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      `position:relative;width:${w}px;height:${h}px;background:#3d8b3d;` +
+      `border-radius:14px;overflow:hidden;border:3px solid #1a1a1a;box-shadow:0 0 30px rgba(0,0,0,0.5);`;
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', String(w));
+    svg.setAttribute('height', String(h));
+    svg.style.cssText = 'position:absolute;inset:0;';
+
+    // White curb (wide stroke gives the track a coloured border).
+    const curb = document.createElementNS(ns, 'path');
+    curb.setAttribute('d', stadiumPath(0));
+    curb.setAttribute('fill', 'none');
+    curb.setAttribute('stroke', '#fff');
+    curb.setAttribute('stroke-width', '88');
+    svg.appendChild(curb);
+
+    // Asphalt — wide enough to comfortably hold all the lanes.
+    const asphalt = document.createElementNS(ns, 'path');
+    asphalt.setAttribute('d', stadiumPath(0));
+    asphalt.setAttribute('fill', 'none');
+    asphalt.setAttribute('stroke', '#3a3a3a');
+    asphalt.setAttribute('stroke-width', '78');
+    svg.appendChild(asphalt);
+
+    // Dashed centre line
+    const center = document.createElementNS(ns, 'path');
+    center.setAttribute('d', stadiumPath(0));
+    center.setAttribute('fill', 'none');
+    center.setAttribute('stroke', '#fff');
+    center.setAttribute('stroke-width', '2');
+    center.setAttribute('stroke-dasharray', '10 16');
+    center.setAttribute('stroke-opacity', '0.55');
+    svg.appendChild(center);
+
+    // Start / finish checker line
+    const finishLine = document.createElementNS(ns, 'rect');
+    finishLine.setAttribute('x', '165');
+    finishLine.setAttribute('y', '0');
+    finishLine.setAttribute('width', '10');
+    finishLine.setAttribute('height', '84');
+    finishLine.setAttribute('fill', '#fff');
+    finishLine.setAttribute('stroke', '#000');
+    finishLine.setAttribute('stroke-width', '1');
+    finishLine.setAttribute('stroke-dasharray', '6 6');
+    svg.appendChild(finishLine);
+
+    stage.appendChild(svg);
+
+    const carColors = ['#ff3b30','#0066cc','#ffcc00','#ffffff','#ff9500','#34c759','#5856d6','#af52de','#0cc846','#e81dbb'];
+    const carData = [];
+    const lanes = order.length;
+    const laneSpacing = Math.min(8, 60 / Math.max(1, lanes - 1));
+
+    // Shuffle which car/lane each driver gets so the winner can be any colour or lane.
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const car = document.createElement('div');
+      const color = carColors[visualIdx % carColors.length];
+      const isWinner = orderIdx === targetIndex;
+      const laneOffset = (visualIdx - (lanes - 1) / 2) * laneSpacing;
+
+      car.style.cssText =
+        'position:absolute;left:0;top:0;width:60px;height:28px;border-radius:8px 14px 14px 8px;' +
+        `background:linear-gradient(180deg,${color},${color}cc);` +
+        'border:1.5px solid rgba(0,0,0,0.6);box-shadow:0 3px 6px rgba(0,0,0,0.6);' +
+        'display:flex;align-items:center;justify-content:flex-start;padding-left:5px;';
+      car.style.offsetPath = `path("${stadiumPath(laneOffset)}")`;
+      car.style.offsetRotate = 'auto';
+      car.style.offsetDistance = '0%';
+      car.style.offsetAnchor = 'center';
+
+      const helmet = document.createElement('img');
+      helmet.src = person.avatarUrl;
+      helmet.style.cssText = 'width:22px;height:22px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(0,0,0,0.4);';
+      car.appendChild(helmet);
+
+      stage.appendChild(car);
+
+      // Winner does exactly numLaps full laps; others lag by 2-22% so they're behind on
+      // the final bend / approaching the finish line.
+      const finalPct = isWinner ? numLaps * 100 : numLaps * 100 - 2 - Math.random() * 20;
+      carData.push({ car, finalPct });
+    });
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // rAF loop: wrap with modulo so cars cleanly continue around the closed path.
+    const startT = performance.now();
+    let raf = 0;
+    const step = (now) => {
+      const t = Math.min(1, (now - startT) / f1Duration);
+      carData.forEach(({ car, finalPct }) => {
+        car.style.offsetDistance = `${(finalPct * t) % 100}%`;
+      });
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+
+    setTimeout(() => {
+      cancelAnimationFrame(raf);
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, f1Duration + 100);
+  }
+
+  /** Hacking terminal: monospace green-on-black, fake "ACCESSING DATABASE..." log scrolls
+   *  line by line, ends with "ACCESS GRANTED // SPEAKER: <winner>" and a blinking cursor. */
+  function showHackTerminalPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+
+    const term = document.createElement('div');
+    term.style.cssText =
+      'background:#000;border:2px solid #0f0;border-radius:8px;padding:18px 22px;width:600px;height:380px;' +
+      'font-family:"SF Mono",Menlo,Consolas,monospace;color:#0f0;font-size:13px;line-height:1.5;' +
+      'box-shadow:0 0 30px rgba(0,255,0,0.3),inset 0 0 30px rgba(0,255,0,0.08);overflow:hidden;text-align:left;';
+
+    const lines = [
+      '> initializing standup_picker.exe ...',
+      '> ACCESSING PERSONNEL DATABASE [############]',
+      '> AUTH BYPASS ............................. OK',
+      `> ${order.length} candidates loaded into buffer`,
+      '> querying brain trust ........... OK',
+      '> filtering by vibe="standup-ready"',
+      '> sorting by chaotic_neutral_index DESC',
+      '> running optimization heuristic ...',
+      '> >>> [ACCESS GRANTED] <<<',
+      '',
+      `> >>> SPEAKER: ${winner.name}`,
+    ];
+
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:0;font-family:inherit;color:inherit;white-space:pre-wrap;word-break:break-word;';
+    term.appendChild(pre);
+
+    const cursor = document.createElement('span');
+    cursor.textContent = '\u258B';
+    const cursorAnim = `hackBlink_${Date.now()}`;
+    cursor.style.cssText = `animation:${cursorAnim} 0.8s steps(2) infinite;color:#0f0;`;
+
+    overlay.appendChild(term);
+    document.body.appendChild(overlay);
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `@keyframes ${cursorAnim} { 0%,100% { opacity: 1; } 50% { opacity: 0; } }`;
+    document.head.appendChild(styleEl);
+
+    let acc = '';
+    const totalDelay = CONFIG.spinDuration - 400;
+    const perLine = totalDelay / lines.length;
+    lines.forEach((line, i) => {
+      setTimeout(() => {
+        acc += line + '\n';
+        pre.textContent = acc;
+        pre.appendChild(cursor);
+      }, 100 + i * perLine);
+    });
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Lightning strike: dim stormy background, avatars in a row, a couple of warning flashes,
+   *  then a big lightning bolt zaps the winner with a yellow electrical glow. */
+  function showLightningPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const dimBg = 'radial-gradient(ellipse at center, #1a1a2e 0%, #000 100%)';
+    overlay.style.background = dimBg;
+
+    const stage = document.createElement('div');
+    stage.style.cssText = 'position:relative;display:flex;gap:14px;padding:80px 30px 40px;flex-wrap:wrap;justify-content:center;max-width:720px;';
+
+    // Shuffle visual layout so the winner can be struck at any column
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const avatarEls = [];
+    layout.forEach((orderIdx) => {
+      const person = order[orderIdx];
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;font-size:11px;font-weight:600;transition:opacity 0.4s,filter 0.3s,transform 0.3s;';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #555;transition:border 0.2s,box-shadow 0.2s;';
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 10);
+      wrap.appendChild(img);
+      wrap.appendChild(name);
+      stage.appendChild(wrap);
+      avatarEls.push({ wrap, img });
+    });
+
+    const clouds = document.createElement('div');
+    clouds.textContent = '\u2601\uFE0F\u2601\uFE0F\uD83C\uDF29\uFE0F\u2601\uFE0F\u2601\uFE0F';
+    clouds.style.cssText = 'position:absolute;top:30px;left:50%;transform:translateX(-50%);font-size:60px;letter-spacing:-12px;';
+    overlay.appendChild(clouds);
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    const flash = (color, duration) => {
+      overlay.style.background = `radial-gradient(ellipse at center, ${color} 0%, #000 100%)`;
+      setTimeout(() => { overlay.style.background = dimBg; }, duration);
+    };
+
+    setTimeout(() => flash('#3a3a8a', 90), 600);
+    setTimeout(() => flash('#5a5a9a', 90), 1200);
+    setTimeout(() => flash('#3a3a8a', 90), 1700);
+
+    setTimeout(() => {
+      const winnerEl = avatarEls[winnerVisualIdx];
+      const winnerRect = winnerEl.wrap.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      const targetX = winnerRect.left - overlayRect.left + winnerRect.width / 2;
+
+      const bolt = document.createElement('div');
+      bolt.style.cssText =
+        `position:absolute;left:${targetX - 30}px;top:90px;width:60px;height:${winnerRect.top - overlayRect.top - 60}px;` +
+        'pointer-events:none;z-index:10;';
+      bolt.innerHTML =
+        '<svg width="100%" height="100%" viewBox="0 0 60 300" preserveAspectRatio="none">' +
+        '<polygon points="35,0 12,140 28,140 18,300 50,130 32,130 45,0" ' +
+        'fill="#ffffff" stroke="#ffff66" stroke-width="2" ' +
+        'style="filter:drop-shadow(0 0 12px #ffff00) drop-shadow(0 0 24px #ffaa00);" />' +
+        '</svg>';
+      overlay.appendChild(bolt);
+
+      overlay.style.background = '#fff';
+      setTimeout(() => { overlay.style.background = dimBg; }, 110);
+
+      avatarEls.forEach(({ wrap, img }, i) => {
+        if (i === winnerVisualIdx) {
+          img.style.border = '3px solid #ffff00';
+          img.style.boxShadow = '0 0 30px #ffff00, 0 0 60px #ff9500';
+          wrap.style.transform = 'scale(1.15)';
+        } else {
+          wrap.style.opacity = '0.25';
+        }
+      });
+    }, 2200);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Domino chain: a row of dominoes (avatars + names) tip in sequence from the left. The
+   *  winner's domino is the wall that stops the chain — everything left of them falls,
+   *  the winner stays standing and lights up green, everything right is untouched. */
+  function showDominoChainPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    // Shuffle visual order so the winner appears at a random column
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const dominoW = 54;
+    const dominoH = 110;
+    const gap = 10;
+    const totalW = layout.length * (dominoW + gap) - gap;
+
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      `position:relative;width:${totalW}px;height:${dominoH + 30}px;` +
+      'display:flex;align-items:flex-end;padding-bottom:20px;' +
+      'border-bottom:3px solid #555;background:linear-gradient(180deg,transparent 70%,rgba(255,255,255,0.04));';
+
+    const dominos = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const dom = document.createElement('div');
+      dom.style.cssText =
+        `position:relative;width:${dominoW}px;height:${dominoH}px;flex-shrink:0;` +
+        'background:linear-gradient(135deg,#f0f0f0,#aaa);border:1.5px solid #333;border-radius:5px;' +
+        `margin-right:${visualIdx === layout.length - 1 ? 0 : gap}px;` +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;' +
+        'color:#222;font-size:9px;font-weight:700;' +
+        'transform-origin:bottom right;' +
+        'transition:transform 0.28s cubic-bezier(0.5, 0.1, 0.7, 1), background 0.3s, color 0.3s, box-shadow 0.3s;' +
+        'box-shadow:2px 2px 4px rgba(0,0,0,0.35);';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid #555;';
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 8);
+      dom.appendChild(img);
+      dom.appendChild(name);
+      stage.appendChild(dom);
+      dominos.push(dom);
+    });
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Knock dominoes from left up to (but not including) the winner.
+    const fallable = Math.max(1, winnerVisualIdx);
+    const stepMs = Math.min(160, (CONFIG.spinDuration - 800) / fallable);
+    for (let i = 0; i < winnerVisualIdx; i++) {
+      setTimeout(() => {
+        dominos[i].style.transform = 'rotate(90deg)';
+      }, 250 + i * stepMs);
+    }
+
+    // After the chain stops at the winner, glow the winner's domino.
+    setTimeout(() => {
+      const w = dominos[winnerVisualIdx];
+      w.style.background = 'linear-gradient(135deg,#34c759,#22a045)';
+      w.style.color = '#fff';
+      w.style.boxShadow = '0 0 24px rgba(52,199,89,0.8), 2px 2px 4px rgba(0,0,0,0.35)';
+      w.style.transform = 'translateY(-10px)';
+    }, 350 + winnerVisualIdx * stepMs);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Sorting Hat: a wizard hat hovers over the avatars, hops between random ones with
+   *  "Hmm..." mumbles, and finally lands on the winner with "STANDUP!". */
+  function showSortingHatPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const avatarSize = 60;
+    const gap = 12;
+    const totalW = order.length * (avatarSize + gap) - gap;
+    const stageW = Math.max(totalW + 40, 480);
+    const stageH = 280;
+    const avatarY = 200;
+    const startX = (stageW - totalW) / 2;
+
+    const stage = document.createElement('div');
+    stage.style.cssText = `position:relative;width:${stageW}px;height:${stageH}px;`;
+
+    // Shuffle visual layout so the hat can land anywhere along the row
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const avatarEls = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const wrap = document.createElement('div');
+      const x = startX + visualIdx * (avatarSize + gap);
+      wrap.style.cssText =
+        `position:absolute;left:${x}px;top:${avatarY}px;width:${avatarSize}px;` +
+        'display:flex;flex-direction:column;align-items:center;gap:4px;' +
+        'color:#fff;font-size:11px;font-weight:600;transition:filter 0.3s;';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = `width:${avatarSize}px;height:${avatarSize}px;border-radius:50%;object-fit:cover;border:2px solid #555;transition:border 0.3s, box-shadow 0.3s;`;
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 10);
+      wrap.appendChild(img);
+      wrap.appendChild(name);
+      stage.appendChild(wrap);
+      avatarEls.push({ wrap, img, x });
+    });
+
+    const hat = document.createElement('div');
+    hat.textContent = '\uD83C\uDFA9';
+    hat.style.cssText =
+      `position:absolute;left:0;top:0;font-size:64px;line-height:1;z-index:10;` +
+      'transition:left 0.32s cubic-bezier(0.4, 0, 0.6, 1), top 0.32s cubic-bezier(0.4, 0, 0.6, 1), transform 0.3s;';
+    stage.appendChild(hat);
+
+    const bubble = document.createElement('div');
+    bubble.style.cssText =
+      'position:absolute;background:#fff;color:#222;padding:6px 14px;border-radius:14px;' +
+      'font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);' +
+      'opacity:0;transition:opacity 0.2s,left 0.32s,top 0.32s,background 0.2s;z-index:11;font-family:Georgia,serif;';
+    stage.appendChild(bubble);
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    const mumbles = ['Hmm...', 'Maybe?', 'Interesting...', 'Tricky...', 'Could be...', 'Almost...', 'Hmm hmm...'];
+    const hopCount = Math.min(order.length + 2, 8);
+    const hops = [];
+    for (let h = 0; h < hopCount - 1; h++) {
+      hops.push(Math.floor(Math.random() * order.length));
+    }
+    hops.push(winnerVisualIdx);
+
+    const hopMs = (CONFIG.spinDuration - 200) / hops.length;
+
+    // Position hat over the first stop instantly so the first transition is visible.
+    hat.style.left = `${avatarEls[hops[0]].x + avatarSize / 2 - 32}px`;
+    hat.style.top = '40px';
+
+    hops.forEach((avatarIdx, h) => {
+      const isLast = h === hops.length - 1;
+      setTimeout(() => {
+        const ax = avatarEls[avatarIdx].x;
+        hat.style.left = `${ax + avatarSize / 2 - 32}px`;
+        hat.style.top = isLast ? `${avatarY - 38}px` : '40px';
+
+        bubble.textContent = isLast ? 'STANDUP!' : mumbles[Math.floor(Math.random() * mumbles.length)];
+        bubble.style.left = `${ax + avatarSize / 2 - 32}px`;
+        bubble.style.top = '0px';
+        bubble.style.opacity = '1';
+
+        if (isLast) {
+          bubble.style.background = '#ffcc00';
+          bubble.style.color = '#222';
+          bubble.style.fontSize = '16px';
+          avatarEls[avatarIdx].img.style.boxShadow = '0 0 30px rgba(255,204,0,0.8)';
+          avatarEls[avatarIdx].img.style.border = '3px solid #ffcc00';
+          avatarEls.forEach(({ wrap }, i) => {
+            if (i !== avatarIdx) wrap.style.filter = 'grayscale(1) opacity(0.4)';
+          });
+        }
+      }, h * hopMs);
+    });
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Survivor torch snuff: each participant has a lit torch; torches snuff out one by one
+   *  in a random order, leaving only the winner's torch burning at the end. */
+  function showTorchSnuffPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    overlay.style.background = 'radial-gradient(ellipse at center, #2a1a0a 0%, #000 100%)';
+
+    const stage = document.createElement('div');
+    stage.style.cssText = 'display:flex;gap:22px;padding:30px;flex-wrap:wrap;justify-content:center;max-width:720px;';
+
+    const flickerName = `flameFlicker_${Date.now()}`;
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      `@keyframes ${flickerName} { from { transform: scale(1) translateY(0); } to { transform: scale(1.18) translateY(-3px); } }`;
+    document.head.appendChild(styleEl);
+
+    // Shuffle visual layout so the winner's torch isn't always at position 0
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const torchEls = [];
+    layout.forEach((orderIdx) => {
+      const person = order[orderIdx];
+      const col = document.createElement('div');
+      col.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;font-size:11px;font-weight:600;transition:opacity 0.4s,filter 0.4s;';
+
+      const flame = document.createElement('div');
+      flame.textContent = '\uD83D\uDD25';
+      flame.style.cssText = `font-size:36px;line-height:1;animation:${flickerName} 0.45s ease-in-out infinite alternate;transition:opacity 0.3s, font-size 0.3s, filter 0.3s;`;
+
+      const torch = document.createElement('div');
+      torch.style.cssText = 'width:8px;height:60px;background:linear-gradient(180deg,#8b4513,#5a2d0c);border-radius:2px;';
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #8b4513;transition:border 0.3s, box-shadow 0.3s;';
+
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 10);
+
+      col.appendChild(flame);
+      col.appendChild(torch);
+      col.appendChild(img);
+      col.appendChild(name);
+      stage.appendChild(col);
+      torchEls.push({ col, flame, img });
+    });
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Random snuff order, excluding the winner (visual indices)
+    const snuffOrder = torchEls.map((_, i) => i).filter(i => i !== winnerVisualIdx);
+    for (let i = snuffOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [snuffOrder[i], snuffOrder[j]] = [snuffOrder[j], snuffOrder[i]];
+    }
+
+    const stepMs = (CONFIG.spinDuration - 800) / Math.max(1, snuffOrder.length);
+    snuffOrder.forEach((idx, n) => {
+      setTimeout(() => {
+        const { flame, img, col } = torchEls[idx];
+        flame.textContent = '\uD83D\uDCA8';
+        flame.style.animation = 'none';
+        flame.style.opacity = '0.4';
+        img.style.filter = 'grayscale(1)';
+        col.style.opacity = '0.45';
+      }, 400 + n * stepMs);
+    });
+
+    setTimeout(() => {
+      const { flame, img } = torchEls[winnerVisualIdx];
+      flame.style.fontSize = '52px';
+      flame.style.filter = 'drop-shadow(0 0 14px #ff9500) drop-shadow(0 0 28px #ff3b30)';
+      img.style.boxShadow = '0 0 30px rgba(255,149,0,0.8)';
+      img.style.border = '3px solid #ff9500';
+    }, CONFIG.spinDuration - 250);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Squid Game red light / green light: avatars line up at the bottom and march toward a
+   *  finish line at the top while the light is GREEN; they freeze on RED. The doll at the
+   *  top turns its head when red. The winner is calibrated to cross the line at the end. */
+  function showSquidGamePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const w = 720;
+    const h = 420;
+    const finishY = 70;
+    const startY = h - 80;
+
+    const field = document.createElement('div');
+    field.style.cssText =
+      `position:relative;width:${w}px;height:${h}px;background:linear-gradient(180deg,#d4a373 0%,#c08a5a 100%);` +
+      `border:3px solid #333;border-radius:10px;overflow:hidden;`;
+
+    const doll = document.createElement('div');
+    doll.textContent = '\uD83D\uDC67';
+    doll.style.cssText = `position:absolute;top:6px;left:50%;transform:translateX(-50%) rotateY(180deg);font-size:80px;line-height:1;transition:transform 0.4s ease-in-out;z-index:5;`;
+    field.appendChild(doll);
+
+    const fLine = document.createElement('div');
+    fLine.style.cssText = `position:absolute;top:${finishY}px;left:0;right:0;height:5px;background:repeating-linear-gradient(90deg,#fff 0,#fff 14px,#000 14px,#000 28px);z-index:1;`;
+    field.appendChild(fLine);
+
+    const light = document.createElement('div');
+    light.style.cssText =
+      `position:absolute;top:96px;left:50%;transform:translateX(-50%);background:#34c759;color:#fff;` +
+      `padding:6px 18px;border-radius:20px;font-weight:800;font-size:13px;letter-spacing:2px;z-index:6;` +
+      `box-shadow:0 0 12px rgba(0,0,0,0.4);transition:background 0.12s;`;
+    light.textContent = 'GREEN LIGHT';
+    field.appendChild(light);
+
+    const playerW = 38;
+    const gap = 14;
+    const totalW = order.length * (playerW + gap) - gap;
+    const playerStartX = (w - totalW) / 2;
+
+    // Shuffle which lane each player runs in so the winner isn't always the leftmost
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const playerEls = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const player = document.createElement('div');
+      const x = playerStartX + visualIdx * (playerW + gap);
+      player.style.cssText =
+        `position:absolute;left:${x}px;top:${startY}px;width:${playerW}px;display:flex;flex-direction:column;align-items:center;gap:2px;` +
+        `transition:top 0.4s linear, opacity 0.3s;color:#fff;font-size:9px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,0.6);`;
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = `width:${playerW}px;height:${playerW}px;border-radius:50%;object-fit:cover;border:2px solid #fff;transition:border 0.3s, box-shadow 0.3s;`;
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 7);
+      player.appendChild(img);
+      player.appendChild(name);
+      field.appendChild(player);
+      playerEls.push({ player, img, currentY: startY });
+    });
+
+    overlay.appendChild(field);
+    document.body.appendChild(overlay);
+
+    const phases = [
+      { state: 'green', dur: 800 },
+      { state: 'red',   dur: 400 },
+      { state: 'green', dur: 700 },
+      { state: 'red',   dur: 350 },
+      { state: 'green', dur: 750 },
+    ];
+    const totalDistance = startY - finishY - 8;
+    const totalGreenMs = phases.filter(p => p.state === 'green').reduce((s, p) => s + p.dur, 0);
+    const playerSpeeds = playerEls.map((_, i) =>
+      i === winnerVisualIdx
+        ? totalDistance / totalGreenMs
+        : (totalDistance * (0.6 + Math.random() * 0.32)) / totalGreenMs
+    );
+
+    let elapsed = 80;
+    phases.forEach((phase) => {
+      const start = elapsed;
+      setTimeout(() => {
+        light.textContent = phase.state === 'green' ? 'GREEN LIGHT' : 'RED LIGHT';
+        light.style.background = phase.state === 'green' ? '#34c759' : '#ff3b30';
+        doll.style.transform = phase.state === 'green'
+          ? 'translateX(-50%) rotateY(180deg)'
+          : 'translateX(-50%) rotateY(0deg)';
+
+        if (phase.state === 'green') {
+          playerEls.forEach((p, i) => {
+            p.currentY = Math.max(finishY, p.currentY - playerSpeeds[i] * phase.dur);
+            p.player.style.transition = `top ${phase.dur}ms linear`;
+            p.player.style.top = `${p.currentY}px`;
+          });
+        } else {
+          playerEls.forEach(p => { p.player.style.transition = 'top 0.08s'; });
+        }
+      }, start);
+      elapsed += phase.dur;
+    });
+
+    setTimeout(() => {
+      playerEls[winnerVisualIdx].img.style.boxShadow = '0 0 22px #ffcc00, 0 0 40px #ff9500';
+      playerEls[winnerVisualIdx].img.style.border = '3px solid #ffcc00';
+      playerEls.forEach((p, i) => {
+        if (i !== winnerVisualIdx) p.player.style.opacity = '0.4';
+      });
+    }, elapsed - 100);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Capybara onsen: a wooden hot tub full of avatar-faced capybaras with little ears.
+   *  Steam wafts up; non-winner capybaras hop out of the tub one by one in random
+   *  directions; the winner stays soaking with a contented "ahhhh~" speech bubble. */
+  function showCapybaraTubPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const w = 560;
+    const h = 360;
+    const tubW = 460;
+    const tubH = 220;
+    const tubX = (w - tubW) / 2;
+    const tubY = h - tubH - 20;
+
+    const stage = document.createElement('div');
+    stage.style.cssText = `position:relative;width:${w}px;height:${h}px;`;
+
+    // Wooden onsen tub (oval, brown)
+    const tub = document.createElement('div');
+    tub.style.cssText =
+      `position:absolute;left:${tubX}px;top:${tubY}px;width:${tubW}px;height:${tubH}px;` +
+      'background:linear-gradient(180deg,#8b6f47,#5a3f1f);border:6px solid #4a2f10;' +
+      'border-radius:50%;box-shadow:0 10px 18px rgba(0,0,0,0.4),inset 0 4px 8px rgba(0,0,0,0.4);';
+
+    // Steamy water inside
+    const water = document.createElement('div');
+    water.style.cssText =
+      'position:absolute;inset:18px;background:radial-gradient(ellipse at 30% 30%,#bce0ec,#5a9eb5);' +
+      'border-radius:50%;box-shadow:inset 0 0 24px rgba(0,0,0,0.3);';
+    tub.appendChild(water);
+    stage.appendChild(tub);
+
+    // Steam wisps drifting up from the water surface
+    const steamAnim = `capySteam_${Date.now()}`;
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      `@keyframes ${steamAnim} {` +
+      `  0% { transform: translateY(0) scale(1); opacity: 0.65; }` +
+      `  100% { transform: translateY(-70px) scale(1.6); opacity: 0; }` +
+      `}`;
+    document.head.appendChild(styleEl);
+
+    for (let i = 0; i < 7; i++) {
+      const steam = document.createElement('div');
+      const x = tubX + 40 + Math.random() * (tubW - 80);
+      const dur = 2 + Math.random() * 1.2;
+      const delay = Math.random() * 2;
+      steam.style.cssText =
+        `position:absolute;left:${x}px;top:${tubY - 6}px;width:34px;height:34px;` +
+        `background:radial-gradient(circle,rgba(255,255,255,0.55),transparent 70%);border-radius:50%;` +
+        `animation:${steamAnim} ${dur}s ease-out ${delay}s infinite;pointer-events:none;`;
+      stage.appendChild(steam);
+    }
+
+    // Capybaras packed inside the water area
+    const capySize = 48;
+    const padX = 36;
+    const padY = 36;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(order.length * (tubW / tubH))));
+    const rows = Math.ceil(order.length / cols);
+    const cellW = (tubW - padX * 2) / cols;
+    const cellH = (tubH - padY * 2) / rows;
+
+    // Shuffle visual layout so the winner isn't always the top-left capybara
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    const capyEls = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const col = visualIdx % cols;
+      const row = Math.floor(visualIdx / cols);
+      const baseX = tubX + padX + col * cellW + cellW / 2 - capySize / 2;
+      const baseY = tubY + padY + row * cellH + cellH / 2 - capySize / 2;
+      const x = baseX + (Math.random() - 0.5) * 8;
+      const y = baseY + (Math.random() - 0.5) * 8;
+
+      const capy = document.createElement('div');
+      capy.style.cssText =
+        `position:absolute;left:${x}px;top:${y}px;width:${capySize}px;height:${capySize}px;` +
+        'display:flex;align-items:center;justify-content:center;z-index:5;' +
+        'transition:transform 0.65s cubic-bezier(0.4,0,0.6,1), opacity 0.45s;';
+
+      // Brown capybara body behind the face
+      const body = document.createElement('div');
+      body.style.cssText = 'position:absolute;inset:-4px;background:linear-gradient(135deg,#8b6f47,#5a3f1f);border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.35);';
+
+      // Two little ear bumps
+      const ear1 = document.createElement('div');
+      ear1.style.cssText = 'position:absolute;top:-6px;left:8px;width:14px;height:11px;background:#5a3f1f;border-radius:50%;';
+      const ear2 = document.createElement('div');
+      ear2.style.cssText = 'position:absolute;top:-6px;right:8px;width:14px;height:11px;background:#5a3f1f;border-radius:50%;';
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = `position:relative;width:${capySize - 10}px;height:${capySize - 10}px;border-radius:50%;object-fit:cover;border:2px solid #4a2f10;z-index:1;`;
+
+      capy.appendChild(body);
+      capy.appendChild(ear1);
+      capy.appendChild(ear2);
+      capy.appendChild(img);
+      stage.appendChild(capy);
+      capyEls.push(capy);
+    });
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Non-winner capybaras hop out in a random sequence; each one flies off in a random
+    // direction with a tumble. Visual indices, not order indices.
+    const exitOrder = capyEls.map((_, i) => i).filter(i => i !== winnerVisualIdx);
+    for (let i = exitOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [exitOrder[i], exitOrder[j]] = [exitOrder[j], exitOrder[i]];
+    }
+
+    const stepMs = (CONFIG.spinDuration - 800) / Math.max(1, exitOrder.length);
+    exitOrder.forEach((idx, n) => {
+      setTimeout(() => {
+        const capy = capyEls[idx];
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 420;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist - 80;
+        const spin = (Math.random() - 0.5) * 720;
+        capy.style.transform = `translate(${dx}px, ${dy}px) rotate(${spin}deg)`;
+        capy.style.opacity = '0';
+      }, 350 + n * stepMs);
+    });
+
+    setTimeout(() => {
+      const winnerCapy = capyEls[winnerVisualIdx];
+      winnerCapy.style.transform = 'scale(1.25)';
+      winnerCapy.style.zIndex = '20';
+
+      const bubble = document.createElement('div');
+      bubble.textContent = 'ahhhh~ \uD83D\uDE0C';
+      bubble.style.cssText =
+        'position:absolute;background:#fff;color:#222;padding:6px 12px;border-radius:14px;' +
+        'font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.3);' +
+        'bottom:100%;left:50%;transform:translateX(-50%) translateY(-10px);white-space:nowrap;' +
+        'font-family:"Comic Sans MS",cursive,sans-serif;';
+      winnerCapy.appendChild(bubble);
+    }, CONFIG.spinDuration - 280);
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, CONFIG.spinDuration + 100);
+  }
+
+  /** Tarot reveal: face-down cards with mystic backs are dealt across a velvet table,
+   *  then flipped one by one. The winner's card flips last and ignites with a golden
+   *  border + arcane title. Decoy cards remain dim once revealed. */
+  function showTarotPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    // Tarot benefits from a slower, more theatrical pace than the default.
+    const tarotDuration = Math.max(CONFIG.spinDuration, 5500);
+
+    const cardW = 100;
+    const cardH = 160;
+    const gap = 14;
+    const maxCards = Math.min(order.length, 6);
+    const stageW = maxCards * cardW + (maxCards - 1) * gap + 60;
+    const stageH = cardH + 110;
+
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      `position:relative;width:${stageW}px;height:${stageH}px;` +
+      'background:radial-gradient(ellipse at 50% 40%,#3a1a4a 0%,#1a0822 70%,#0a0410 100%);' +
+      'border-radius:18px;border:3px solid #d4af37;' +
+      'box-shadow:0 0 40px rgba(212,175,55,0.35),inset 0 0 60px rgba(0,0,0,0.6);' +
+      'padding:30px;overflow:hidden;';
+
+    // Subtle starfield specks for atmosphere
+    for (let i = 0; i < 16; i++) {
+      const star = document.createElement('div');
+      const sx = Math.random() * stageW;
+      const sy = Math.random() * stageH;
+      const sz = 1 + Math.random() * 2;
+      star.style.cssText =
+        `position:absolute;left:${sx}px;top:${sy}px;width:${sz}px;height:${sz}px;` +
+        `background:#fff;border-radius:50%;opacity:${0.2 + Math.random() * 0.5};` +
+        'box-shadow:0 0 4px rgba(255,255,255,0.6);';
+      stage.appendChild(star);
+    }
+
+    const flipName = `tarotFlip_${Date.now()}`;
+    const dealName = `tarotDeal_${Date.now()}`;
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      `@keyframes ${flipName} { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(180deg); } }` +
+      `@keyframes ${dealName} { 0% { transform: translateY(-180px) rotate(-15deg); opacity: 0; }` +
+      ` 70% { opacity: 1; } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }`;
+    document.head.appendChild(styleEl);
+
+    // Pick the visual indices that get a real card. Always include the winner.
+    const order2 = order.map((_, i) => i);
+    for (let i = order2.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order2[i], order2[j]] = [order2[j], order2[i]];
+    }
+    const chosen = order2.slice(0, maxCards);
+    if (!chosen.includes(targetIndex)) {
+      chosen[chosen.length - 1] = targetIndex;
+    }
+    // Re-shuffle the chosen indices so the winner's card isn't always last visually.
+    for (let i = chosen.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chosen[i], chosen[j]] = [chosen[j], chosen[i]];
+    }
+    const winnerVisualIdx = chosen.indexOf(targetIndex);
+
+    const tarotTitles = ['THE STAR', 'THE SUN', 'THE MOON', 'THE FOOL', 'THE MAGICIAN', 'THE EMPRESS', 'THE WORLD', 'THE TOWER'];
+    const tarotShuffled = [...tarotTitles].sort(() => Math.random() - 0.5);
+    const cardsRow = document.createElement('div');
+    cardsRow.style.cssText =
+      `position:relative;display:flex;justify-content:center;align-items:center;gap:${gap}px;` +
+      'width:100%;height:100%;';
+    stage.appendChild(cardsRow);
+
+    const cardEls = [];
+    chosen.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const isWinner = orderIdx === targetIndex;
+
+      const cardWrap = document.createElement('div');
+      cardWrap.style.cssText =
+        `position:relative;width:${cardW}px;height:${cardH}px;perspective:900px;` +
+        `animation:${dealName} 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) ${visualIdx * 180}ms both;`;
+
+      const card = document.createElement('div');
+      card.style.cssText =
+        'position:relative;width:100%;height:100%;transform-style:preserve-3d;' +
+        'transition:transform 0.85s cubic-bezier(0.55, 0, 0.25, 1), filter 0.4s;';
+
+      const back = document.createElement('div');
+      back.style.cssText =
+        'position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;' +
+        'background:linear-gradient(135deg,#4b1d6e,#1a0640);' +
+        'border:2px solid #d4af37;box-shadow:0 4px 10px rgba(0,0,0,0.5);' +
+        'display:flex;align-items:center;justify-content:center;color:#d4af37;font-size:46px;' +
+        'font-family:Georgia,serif;text-shadow:0 0 8px rgba(212,175,55,0.8);';
+      back.textContent = '\u2605';
+
+      const front = document.createElement('div');
+      front.style.cssText =
+        'position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;' +
+        'background:linear-gradient(180deg,#fffaf0,#e8dcc4);transform:rotateY(180deg);' +
+        'border:2px solid #d4af37;box-shadow:0 4px 10px rgba(0,0,0,0.5);' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:space-between;' +
+        'padding:8px 6px;color:#3d1f0a;font-family:Georgia,serif;text-align:center;';
+
+      const titleTop = document.createElement('div');
+      titleTop.textContent = tarotShuffled[visualIdx % tarotShuffled.length];
+      titleTop.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:1.2px;color:#5a2e0a;';
+
+      const portrait = document.createElement('div');
+      portrait.style.cssText =
+        'width:62px;height:62px;border-radius:50%;border:2px solid #d4af37;overflow:hidden;' +
+        'box-shadow:inset 0 0 6px rgba(0,0,0,0.4),0 2px 4px rgba(0,0,0,0.3);';
+      const portraitImg = document.createElement('img');
+      portraitImg.src = person.avatarUrl;
+      portraitImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      portrait.appendChild(portraitImg);
+
+      const nameTag = document.createElement('div');
+      nameTag.textContent = person.name.split(' ')[0].slice(0, 10);
+      nameTag.style.cssText = 'font-size:11px;font-weight:700;font-style:italic;';
+
+      front.appendChild(titleTop);
+      front.appendChild(portrait);
+      front.appendChild(nameTag);
+
+      card.appendChild(back);
+      card.appendChild(front);
+      cardWrap.appendChild(card);
+      cardsRow.appendChild(cardWrap);
+      cardEls.push({ wrap: cardWrap, card, isWinner });
+    });
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Reveal cards in shuffled order with the winner ALWAYS last so the spotlight lands on them.
+    const revealOrder = cardEls.map((_, i) => i).filter(i => i !== winnerVisualIdx);
+    for (let i = revealOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [revealOrder[i], revealOrder[j]] = [revealOrder[j], revealOrder[i]];
+    }
+    revealOrder.push(winnerVisualIdx);
+
+    const dealEnd = chosen.length * 180 + 800;
+    // Reserve more time for the final winner reveal so the gold halo can breathe.
+    const winnerHold = 900;
+    const flipWindow = Math.max(900, tarotDuration - dealEnd - winnerHold);
+    const flipStep = flipWindow / Math.max(1, revealOrder.length - 1);
+
+    revealOrder.forEach((visualIdx, n) => {
+      const isLast = n === revealOrder.length - 1;
+      // Non-winners flip on a steady cadence; the winner flips after a deliberate pause.
+      const at = isLast
+        ? dealEnd + (revealOrder.length - 1) * flipStep + 350
+        : dealEnd + n * flipStep;
+      setTimeout(() => {
+        const { card, isWinner } = cardEls[visualIdx];
+        card.style.transform = 'rotateY(180deg)';
+        if (!isWinner) {
+          setTimeout(() => { card.style.filter = 'grayscale(0.7) brightness(0.55)'; }, 500);
+        } else if (isLast) {
+          setTimeout(() => {
+            cardEls[visualIdx].wrap.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s';
+            cardEls[visualIdx].wrap.style.transform = 'scale(1.18) translateY(-10px)';
+            cardEls[visualIdx].wrap.style.filter = 'drop-shadow(0 0 22px rgba(212,175,55,0.95))';
+          }, 450);
+        }
+      }, at);
+    });
+
+    setTimeout(() => {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, tarotDuration + 100);
+  }
+
+  /** Claw machine: a crane claw glides along a rail, descends into a heap of plush avatars,
+   *  grabs the winner, ascends, slides over to the prize chute, and drops them into the
+   *  reward tray at the bottom. Mechanical and very satisfying. */
+  function showClawMachinePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    const w = 460;
+    const h = 500;
+    const railY = 56;
+    const heapTop = 280;
+    const heapBottom = 410;
+    const chuteX = w - 70;
+    const trayY = h - 70;
+
+    const cabinet = document.createElement('div');
+    cabinet.style.cssText =
+      `position:relative;width:${w}px;height:${h}px;` +
+      'background:linear-gradient(180deg,#2a1a3e 0%,#1a0a2e 100%);' +
+      'border-radius:16px;border:6px solid #ff3b8a;' +
+      'box-shadow:0 0 40px rgba(255,59,138,0.4),inset 0 0 30px rgba(0,0,0,0.6);overflow:hidden;';
+
+    // Glass reflection panel
+    const glass = document.createElement('div');
+    glass.style.cssText =
+      'position:absolute;inset:18px;border:2px solid rgba(255,255,255,0.15);border-radius:8px;' +
+      'background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,transparent 40%,rgba(255,255,255,0.04) 100%);' +
+      'pointer-events:none;z-index:5;';
+    cabinet.appendChild(glass);
+
+    // Top crane rail
+    const rail = document.createElement('div');
+    rail.style.cssText =
+      `position:absolute;left:20px;right:20px;top:${railY}px;height:6px;` +
+      'background:linear-gradient(180deg,#888,#444);border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,0.5);';
+    cabinet.appendChild(rail);
+
+    // Prize chute on the right
+    const chute = document.createElement('div');
+    chute.style.cssText =
+      `position:absolute;left:${chuteX}px;top:${railY + 20}px;width:50px;height:${trayY - railY - 20}px;` +
+      'background:linear-gradient(180deg,rgba(255,59,138,0.15),rgba(255,59,138,0.05));' +
+      'border:2px dashed rgba(255,59,138,0.6);border-radius:8px;';
+    cabinet.appendChild(chute);
+
+    // Reward tray at the bottom
+    const tray = document.createElement('div');
+    tray.style.cssText =
+      `position:absolute;left:20px;right:20px;top:${trayY}px;bottom:14px;` +
+      'background:linear-gradient(180deg,#3a2a1a,#2a1a0a);border:3px solid #5a3f1f;border-radius:8px;' +
+      'display:flex;align-items:center;justify-content:center;color:#d4af37;font-size:11px;font-weight:700;' +
+      'letter-spacing:2px;text-shadow:0 1px 2px rgba(0,0,0,0.6);';
+    tray.textContent = 'PRIZES';
+    cabinet.appendChild(tray);
+
+    // Plushies (avatars) heaped at the bottom
+    const plushSize = 52;
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+    const plushColors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#007aff', '#5856d6', '#af52de', '#ff2d55'];
+
+    const plushEls = [];
+    const heapWidth = chuteX - 40;
+    const cols = Math.max(2, Math.ceil(Math.sqrt(layout.length * 1.6)));
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const col = visualIdx % cols;
+      const row = Math.floor(visualIdx / cols);
+      const colW = heapWidth / cols;
+      const x = 30 + col * colW + colW / 2 - plushSize / 2 + (Math.random() - 0.5) * 10;
+      const y = heapBottom - plushSize - row * (plushSize - 8) + (Math.random() - 0.5) * 4;
+
+      const plush = document.createElement('div');
+      plush.style.cssText =
+        `position:absolute;left:${x}px;top:${y}px;width:${plushSize}px;height:${plushSize}px;` +
+        'transition:left 0.6s cubic-bezier(0.4,0,0.6,1), top 0.6s cubic-bezier(0.4,0,0.6,1), opacity 0.4s, transform 0.5s;' +
+        'z-index:2;';
+      const body = document.createElement('div');
+      body.style.cssText =
+        `position:absolute;inset:0;background:radial-gradient(circle at 35% 30%,${plushColors[visualIdx % plushColors.length]},#222 110%);` +
+        'border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.6),inset -4px -4px 8px rgba(0,0,0,0.3);';
+      const ear1 = document.createElement('div');
+      ear1.style.cssText = `position:absolute;top:-6px;left:8px;width:14px;height:14px;background:${plushColors[visualIdx % plushColors.length]};border-radius:50%;border:1px solid rgba(0,0,0,0.4);`;
+      const ear2 = document.createElement('div');
+      ear2.style.cssText = `position:absolute;top:-6px;right:8px;width:14px;height:14px;background:${plushColors[visualIdx % plushColors.length]};border-radius:50%;border:1px solid rgba(0,0,0,0.4);`;
+      const face = document.createElement('img');
+      face.src = person.avatarUrl;
+      face.style.cssText =
+        `position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);` +
+        `width:${plushSize - 14}px;height:${plushSize - 14}px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.85);`;
+
+      plush.appendChild(body);
+      plush.appendChild(ear1);
+      plush.appendChild(ear2);
+      plush.appendChild(face);
+      cabinet.appendChild(plush);
+      plushEls.push({ el: plush, x, y });
+    });
+
+    // The crane: rail trolley + cable + claw
+    const craneX0 = 40;
+    const trolley = document.createElement('div');
+    trolley.style.cssText =
+      `position:absolute;left:${craneX0}px;top:${railY - 10}px;width:36px;height:24px;` +
+      'background:linear-gradient(180deg,#aaa,#555);border:2px solid #222;border-radius:4px;' +
+      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1);z-index:7;box-shadow:0 2px 4px rgba(0,0,0,0.5);';
+    cabinet.appendChild(trolley);
+
+    const cable = document.createElement('div');
+    cable.style.cssText =
+      `position:absolute;left:${craneX0 + 16}px;top:${railY + 14}px;width:2px;height:40px;` +
+      'background:#222;transition:left 0.85s cubic-bezier(0.4,0,0.6,1), height 0.55s cubic-bezier(0.4,0,0.6,1);z-index:6;';
+    cabinet.appendChild(cable);
+
+    const claw = document.createElement('div');
+    claw.style.cssText =
+      `position:absolute;left:${craneX0 - 6}px;top:${railY + 50}px;width:48px;height:36px;` +
+      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1), top 0.55s cubic-bezier(0.4,0,0.6,1);z-index:8;';
+
+    const clawCenter = document.createElement('div');
+    clawCenter.style.cssText =
+      'position:absolute;left:50%;top:0;transform:translateX(-50%);width:18px;height:14px;' +
+      'background:linear-gradient(180deg,#ccc,#666);border:2px solid #222;border-radius:4px 4px 2px 2px;';
+    claw.appendChild(clawCenter);
+
+    const clawL = document.createElement('div');
+    clawL.style.cssText =
+      'position:absolute;left:6px;top:10px;width:14px;height:24px;' +
+      'background:linear-gradient(135deg,#bbb,#555);border:2px solid #222;border-radius:6px 0 6px 18px;' +
+      'transform-origin:top right;transition:transform 0.3s cubic-bezier(0.4,0,0.6,1);';
+    claw.appendChild(clawL);
+
+    const clawR = document.createElement('div');
+    clawR.style.cssText =
+      'position:absolute;right:6px;top:10px;width:14px;height:24px;' +
+      'background:linear-gradient(225deg,#bbb,#555);border:2px solid #222;border-radius:0 6px 18px 6px;' +
+      'transform-origin:top left;transition:transform 0.3s cubic-bezier(0.4,0,0.6,1);';
+    claw.appendChild(clawR);
+
+    cabinet.appendChild(claw);
+
+    overlay.appendChild(cabinet);
+    document.body.appendChild(overlay);
+
+    const winnerInfo = plushEls[winnerVisualIdx];
+    const targetCraneX = winnerInfo.x + plushSize / 2 - 18;
+    const trolleyTargetX = winnerInfo.x + plushSize / 2 - 18;
+    const dropDepth = winnerInfo.y - railY - 50 - 4;
+
+    const t1 = 100;                              // start: glide claw to winner column
+    const t2 = t1 + 950;                         // descend
+    const t3 = t2 + 700;                         // close grip
+    const t4 = t3 + 450;                         // ascend with plush
+    const t5 = t4 + 750;                         // glide to chute
+    const t6 = t5 + 950;                         // descend into chute & release
+    const t7 = t6 + 600;                         // plush lands in tray
+
+    setTimeout(() => {
+      trolley.style.left = `${trolleyTargetX}px`;
+      cable.style.left = `${trolleyTargetX + 16}px`;
+      claw.style.left = `${targetCraneX}px`;
+    }, t1);
+
+    setTimeout(() => {
+      cable.style.height = `${dropDepth + 50}px`;
+      claw.style.top = `${winnerInfo.y - 10}px`;
+    }, t2);
+
+    setTimeout(() => {
+      clawL.style.transform = 'rotate(35deg)';
+      clawR.style.transform = 'rotate(-35deg)';
+      // Lift the plush along with the claw (attach visually).
+      winnerInfo.el.style.zIndex = '9';
+    }, t3);
+
+    setTimeout(() => {
+      cable.style.height = '40px';
+      claw.style.top = `${railY + 50}px`;
+      winnerInfo.el.style.left = `${targetCraneX + 18 - plushSize / 2}px`;
+      winnerInfo.el.style.top = `${railY + 86}px`;
+    }, t4);
+
+    setTimeout(() => {
+      const chuteCenter = chuteX + 25 - 18;
+      trolley.style.left = `${chuteCenter}px`;
+      cable.style.left = `${chuteCenter + 16}px`;
+      claw.style.left = `${chuteCenter}px`;
+      winnerInfo.el.style.left = `${chuteCenter + 18 - plushSize / 2}px`;
+    }, t5);
+
+    setTimeout(() => {
+      // Open claw & release plush; it falls into the tray
+      clawL.style.transform = 'rotate(0deg)';
+      clawR.style.transform = 'rotate(0deg)';
+      winnerInfo.el.style.transition = 'top 0.55s cubic-bezier(0.55, 0, 0.7, 1), transform 0.55s, box-shadow 0.4s';
+      winnerInfo.el.style.top = `${trayY - plushSize / 2}px`;
+      winnerInfo.el.style.transform = 'scale(1.1)';
+      winnerInfo.el.style.zIndex = '12';
+      winnerInfo.el.style.filter = 'drop-shadow(0 0 20px rgba(255,204,0,0.85))';
+    }, t6);
+
+    setTimeout(() => {
+      tray.textContent = '';
+    }, t7);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, Math.max(CONFIG.spinDuration + 100, t7 + 400));
+  }
+
+  /** Hot potato: avatars stand in a circle around a glowing, sparking potato that hops
+   *  from player to player. The hopping accelerates, then slows, and the potato lands
+   *  on the winner where it explodes in confetti and sparks. */
+  function showHotPotatoPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    // Hot potato wants enough hops to feel suspenseful — extend past the default if needed.
+    const potatoDuration = Math.max(CONFIG.spinDuration, 4500);
+
+    const stageSize = 460;
+    const radius = stageSize / 2 - 60;
+    const cx = stageSize / 2;
+    const cy = stageSize / 2;
+    const avatarSize = 56;
+    const potatoSize = 54;
+
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      `position:relative;width:${stageSize}px;height:${stageSize}px;` +
+      'background:radial-gradient(circle at 50% 50%,#3a2a1e 0%,#1a0e08 75%);border-radius:50%;' +
+      'border:4px solid #5a3f1f;box-shadow:0 0 40px rgba(255,140,40,0.35),inset 0 0 40px rgba(0,0,0,0.6);';
+
+    // Shuffle the layout so the winner can land at any angular position
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+    const n = layout.length;
+
+    const avatarPositions = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const angle = (visualIdx / n) * Math.PI * 2 - Math.PI / 2;
+      const ax = cx + radius * Math.cos(angle) - avatarSize / 2;
+      const ay = cy + radius * Math.sin(angle) - avatarSize / 2;
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText =
+        `position:absolute;left:${ax}px;top:${ay}px;width:${avatarSize}px;` +
+        'display:flex;flex-direction:column;align-items:center;gap:3px;' +
+        'transition:transform 0.25s, filter 0.5s;color:#fff;font-size:10px;font-weight:600;';
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText =
+        `width:${avatarSize}px;height:${avatarSize}px;border-radius:50%;object-fit:cover;` +
+        'border:3px solid #555;transition:border 0.25s, box-shadow 0.25s, transform 0.25s;';
+
+      const name = document.createElement('span');
+      name.textContent = person.name.split(' ')[0].slice(0, 9);
+      name.style.cssText = 'text-shadow:0 1px 2px rgba(0,0,0,0.7);';
+
+      wrap.appendChild(img);
+      wrap.appendChild(name);
+      stage.appendChild(wrap);
+      avatarPositions.push({ wrap, img, x: ax + avatarSize / 2, y: ay + avatarSize / 2 });
+    });
+
+    // Glowing potato
+    const potato = document.createElement('div');
+    potato.textContent = '\uD83E\uDD54';
+    potato.style.cssText =
+      `position:absolute;left:${cx - potatoSize / 2}px;top:${cy - potatoSize / 2}px;` +
+      `width:${potatoSize}px;height:${potatoSize}px;font-size:${potatoSize - 6}px;line-height:1;` +
+      'display:flex;align-items:center;justify-content:center;z-index:10;' +
+      'transition:left 0.28s cubic-bezier(0.4,0,0.6,1), top 0.28s cubic-bezier(0.4,0,0.6,1), transform 0.28s;' +
+      'filter:drop-shadow(0 0 12px rgba(255,140,40,0.85));';
+    stage.appendChild(potato);
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Build a hop schedule that starts slow, speeds up in the middle, then dramatically
+    // slows down before landing on the winner so the suspense really builds.
+    const totalMs = potatoDuration - 600;
+    const hops = [];
+    let t = 0;
+    let cur = Math.floor(Math.random() * n);
+    while (t < totalMs - 600) {
+      const progress = t / totalMs;
+      // Speed curve: slow start (~260ms), fast middle (~140ms), very slow tail (~360ms)
+      let speedFactor;
+      if (progress < 0.5) {
+        speedFactor = 1.4 - progress * 1.6; // 1.4 -> 0.6
+      } else {
+        speedFactor = 0.6 + (progress - 0.5) * 2.4; // 0.6 -> 1.8
+      }
+      const dt = 180 * speedFactor + Math.random() * 40;
+      let next;
+      if (Math.random() < 0.7) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        next = (cur + dir + n) % n;
+      } else {
+        next = Math.floor(Math.random() * n);
+        if (next === cur) next = (next + 1) % n;
+      }
+      hops.push({ at: t, idx: next });
+      cur = next;
+      t += dt;
+    }
+    // Penultimate hop: a deliberate "almost..." hover on a non-winner near the end.
+    let teaseIdx = Math.floor(Math.random() * n);
+    if (teaseIdx === winnerVisualIdx) teaseIdx = (teaseIdx + 1) % n;
+    hops.push({ at: totalMs - 350, idx: teaseIdx });
+    // Final hop locks on the winner.
+    hops.push({ at: totalMs, idx: winnerVisualIdx });
+
+    let lastHighlighted = null;
+    hops.forEach((hop, i) => {
+      const isLast = i === hops.length - 1;
+      setTimeout(() => {
+        const target = avatarPositions[hop.idx];
+        potato.style.left = `${target.x - potatoSize / 2}px`;
+        potato.style.top = `${target.y - potatoSize / 2 - 8}px`;
+        potato.style.transform = `rotate(${(Math.random() - 0.5) * 40}deg) scale(${isLast ? 1.4 : 1.0})`;
+
+        if (lastHighlighted !== null && lastHighlighted !== hop.idx) {
+          const prev = avatarPositions[lastHighlighted];
+          prev.img.style.border = '3px solid #555';
+          prev.img.style.boxShadow = 'none';
+          prev.img.style.transform = 'scale(1)';
+        }
+        const cur2 = avatarPositions[hop.idx];
+        cur2.img.style.border = isLast ? '4px solid #ffcc00' : '3px solid #ff8c28';
+        cur2.img.style.boxShadow = isLast
+          ? '0 0 28px rgba(255,204,0,0.95)'
+          : '0 0 14px rgba(255,140,40,0.7)';
+        cur2.img.style.transform = isLast ? 'scale(1.18)' : 'scale(1.06)';
+        lastHighlighted = hop.idx;
+      }, hop.at);
+    });
+
+    // Boom! at the end: confetti + scorched effect on the winner; others fade.
+    setTimeout(() => {
+      potato.style.transition = 'transform 0.4s, opacity 0.4s';
+      potato.style.transform = 'scale(2.4)';
+      potato.style.opacity = '0';
+
+      const winnerPos = avatarPositions[winnerVisualIdx];
+      // Confetti burst
+      for (let i = 0; i < 18; i++) {
+        const piece = document.createElement('div');
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 90;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist;
+        const colors = ['#ff3b30', '#ffcc00', '#34c759', '#007aff', '#ff9500', '#af52de'];
+        piece.style.cssText =
+          `position:absolute;left:${winnerPos.x - 4}px;top:${winnerPos.y - 4}px;width:8px;height:8px;` +
+          `background:${colors[i % colors.length]};border-radius:2px;z-index:11;` +
+          'transition:transform 0.7s cubic-bezier(0.2,0.7,0.4,1), opacity 0.7s;pointer-events:none;';
+        stage.appendChild(piece);
+        requestAnimationFrame(() => {
+          piece.style.transform = `translate(${dx}px, ${dy}px) rotate(${Math.random() * 720}deg)`;
+          piece.style.opacity = '0';
+        });
+      }
+      avatarPositions.forEach(({ wrap }, i) => {
+        if (i !== winnerVisualIdx) wrap.style.filter = 'grayscale(1) brightness(0.4)';
+      });
+    }, totalMs + 200);
+
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, potatoDuration + 100);
+  }
+
+  /** Blackjack table: dealer at the top, players seated around a green felt arc. Cards are
+   *  dealt face-down to each player, then flipped one by one to reveal their hand value.
+   *  All non-winners bust or stand low; the winner reveals BLACKJACK (21) with a gold halo. */
+  function showBlackjackPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+
+    // Blackjack needs more time: deal each card, suspense between flips, dealer reveal,
+    // then the winner's BLACKJACK moment. Default 3000ms is way too tight.
+    const blackjackDuration = Math.max(CONFIG.spinDuration, 6000);
+
+    const w = 720;
+    const h = 480;
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      `position:relative;width:${w}px;height:${h}px;` +
+      'background:radial-gradient(ellipse at 50% 30%,#2a8050 0%,#1a5030 60%,#0a2820 100%);' +
+      'border-radius:240px 240px 18px 18px / 200px 200px 18px 18px;' +
+      'border:8px solid #5a3f1f;' +
+      'box-shadow:0 0 40px rgba(0,0,0,0.6),inset 0 0 60px rgba(0,0,0,0.5);overflow:hidden;';
+
+    // Felt curve guide line
+    const arc = document.createElement('div');
+    arc.style.cssText =
+      'position:absolute;left:50%;top:30%;transform:translateX(-50%);width:80%;height:60%;' +
+      'border:2px dashed rgba(255,255,255,0.18);border-radius:50%;pointer-events:none;';
+    stage.appendChild(arc);
+
+    // Casino label
+    const label = document.createElement('div');
+    label.textContent = 'BLACKJACK \u2660\uFE0F  PAYS 3 TO 2';
+    label.style.cssText =
+      'position:absolute;top:18px;left:50%;transform:translateX(-50%);' +
+      'color:rgba(255,255,255,0.55);font-family:Georgia,serif;font-size:13px;letter-spacing:3px;font-weight:700;' +
+      'text-shadow:0 1px 2px rgba(0,0,0,0.6);';
+    stage.appendChild(label);
+
+    // Dealer at the top center
+    const dealerY = 60;
+    const dealer = document.createElement('div');
+    dealer.style.cssText =
+      `position:absolute;left:50%;top:${dealerY}px;transform:translateX(-50%);` +
+      'display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;font-size:12px;font-weight:700;';
+    const dealerBadge = document.createElement('div');
+    dealerBadge.textContent = '\uD83C\uDFB0 DEALER';
+    dealerBadge.style.cssText = 'background:rgba(0,0,0,0.45);padding:4px 10px;border-radius:10px;letter-spacing:1px;';
+    dealer.appendChild(dealerBadge);
+
+    // Two dealer cards (one face up = 10, one face down then revealed)
+    const dealerHand = document.createElement('div');
+    dealerHand.style.cssText = 'display:flex;gap:6px;margin-top:4px;';
+    dealer.appendChild(dealerHand);
+    stage.appendChild(dealer);
+
+    // Player layout: arc across the bottom half of the table
+    const playerCount = order.length;
+    const layout = order.map((_, i) => i);
+    for (let i = layout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [layout[i], layout[j]] = [layout[j], layout[i]];
+    }
+    const winnerVisualIdx = layout.indexOf(targetIndex);
+
+    // Position players evenly along an arc
+    const arcCx = w / 2;
+    const arcCy = h - 70;
+    const arcR = Math.min(280, w / 2 - 50);
+
+    const cardW = 46;
+    const cardH = 64;
+
+    function makeCard(value, suit) {
+      const card = document.createElement('div');
+      card.style.cssText =
+        `position:relative;width:${cardW}px;height:${cardH}px;perspective:600px;`;
+      const inner = document.createElement('div');
+      inner.style.cssText =
+        'position:absolute;inset:0;transform-style:preserve-3d;' +
+        'transition:transform 0.8s cubic-bezier(0.55, 0, 0.25, 1);';
+      const back = document.createElement('div');
+      back.style.cssText =
+        'position:absolute;inset:0;border-radius:6px;backface-visibility:hidden;' +
+        'background:repeating-linear-gradient(45deg,#a01818 0,#a01818 6px,#7a0a0a 6px,#7a0a0a 12px);' +
+        'border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.5);';
+      const front = document.createElement('div');
+      const isRed = suit === '\u2665' || suit === '\u2666';
+      front.style.cssText =
+        'position:absolute;inset:0;border-radius:6px;backface-visibility:hidden;' +
+        `background:#fff;color:${isRed ? '#c8102e' : '#111'};` +
+        'transform:rotateY(180deg);border:1.5px solid #ccc;box-shadow:0 2px 4px rgba(0,0,0,0.5);' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:space-between;' +
+        'padding:4px 4px;font-family:Georgia,serif;font-weight:800;';
+      const tl = document.createElement('span');
+      tl.textContent = value;
+      tl.style.cssText = 'font-size:12px;line-height:1;align-self:flex-start;';
+      const mid = document.createElement('span');
+      mid.textContent = suit;
+      mid.style.cssText = 'font-size:22px;line-height:1;';
+      const br = document.createElement('span');
+      br.textContent = value;
+      br.style.cssText = 'font-size:12px;line-height:1;align-self:flex-end;transform:rotate(180deg);';
+      front.appendChild(tl);
+      front.appendChild(mid);
+      front.appendChild(br);
+      inner.appendChild(back);
+      inner.appendChild(front);
+      card.appendChild(inner);
+      return { root: card, inner };
+    }
+
+    // Build each player's hand in advance (winner = 21, others < 21 or bust)
+    const suits = ['\u2660', '\u2665', '\u2666', '\u2663'];
+    const playerEls = [];
+    layout.forEach((orderIdx, visualIdx) => {
+      const person = order[orderIdx];
+      const isWinner = orderIdx === targetIndex;
+      // Spread players evenly along the bottom arc.
+      const span = Math.PI * 0.75;
+      const startAngle = Math.PI / 2 + span / 2;
+      const angle = playerCount === 1
+        ? Math.PI / 2
+        : startAngle - (visualIdx / (playerCount - 1)) * span;
+      const px = arcCx + arcR * Math.cos(angle) - 60;
+      const py = arcCy - arcR * Math.sin(angle) * 0.55 - 60;
+
+      const seat = document.createElement('div');
+      seat.style.cssText =
+        `position:absolute;left:${px}px;top:${py}px;width:120px;` +
+        'display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-size:11px;font-weight:700;' +
+        'transition:filter 0.4s, transform 0.4s;';
+
+      const hand = document.createElement('div');
+      hand.style.cssText = 'display:flex;gap:4px;height:64px;';
+
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid #d4af37;box-shadow:0 2px 4px rgba(0,0,0,0.5);';
+
+      const nameLabel = document.createElement('span');
+      nameLabel.textContent = person.name.split(' ')[0].slice(0, 10);
+      nameLabel.style.cssText = 'text-shadow:0 1px 2px rgba(0,0,0,0.7);';
+
+      const scoreBadge = document.createElement('div');
+      scoreBadge.style.cssText =
+        'background:rgba(0,0,0,0.55);padding:3px 10px;border-radius:8px;font-size:11px;letter-spacing:1px;' +
+        'opacity:0;transition:opacity 0.3s, background 0.3s, color 0.3s, transform 0.3s;';
+      scoreBadge.textContent = '?';
+
+      seat.appendChild(hand);
+      seat.appendChild(img);
+      seat.appendChild(nameLabel);
+      seat.appendChild(scoreBadge);
+      stage.appendChild(seat);
+
+      // Decide cards: winner -> A + 10-value (BLACKJACK); losers -> random 12-19 or bust.
+      let c1Val, c1Suit, c2Val, c2Suit, score, label2;
+      const suit1 = suits[Math.floor(Math.random() * 4)];
+      const suit2 = suits[Math.floor(Math.random() * 4)];
+      if (isWinner) {
+        c1Val = 'A';
+        c1Suit = suit1;
+        const tens = ['10', 'J', 'Q', 'K'];
+        c2Val = tens[Math.floor(Math.random() * tens.length)];
+        c2Suit = suit2;
+        score = 21;
+        label2 = 'BLACKJACK!';
+      } else {
+        // Random hand: roughly half stand low, half bust
+        if (Math.random() < 0.5) {
+          score = 22 + Math.floor(Math.random() * 6); // bust: 22-27
+        } else {
+          score = 13 + Math.floor(Math.random() * 7); // stand: 13-19
+        }
+        // Pick two card values that roughly add up
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        c1Val = ranks[Math.floor(Math.random() * ranks.length)];
+        c2Val = ranks[Math.floor(Math.random() * ranks.length)];
+        c1Suit = suit1;
+        c2Suit = suit2;
+        label2 = score > 21 ? `BUST (${score})` : String(score);
+      }
+
+      const card1 = makeCard(c1Val, c1Suit);
+      const card2 = makeCard(c2Val, c2Suit);
+      hand.appendChild(card1.root);
+      hand.appendChild(card2.root);
+
+      playerEls.push({ seat, card1, card2, scoreBadge, label2, isWinner, score });
+    });
+
+    // Dealer's two cards (Q + 7 = 17 stands)
+    const dealerCard1 = makeCard('Q', '\u2660');
+    const dealerCard2 = makeCard('7', '\u2666');
+    dealerHand.appendChild(dealerCard1.root);
+    dealerHand.appendChild(dealerCard2.root);
+
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+
+    // Phase timings: deal -> reveal players (winner last) -> dealer reveal -> spotlight
+    const totalDealCards = playerEls.length * 2 + 2;
+    const perDeal = 140; // fixed per-card stagger so a busier table feels deliberate, not panicked
+
+    // Pre-rotate all cards for a "deal" effect: start above the dealer, slide to position.
+    [...playerEls.flatMap(p => [p.card1.root, p.card2.root]), dealerCard1.root, dealerCard2.root].forEach((cardRoot, i) => {
+      cardRoot.style.transition = 'transform 0.55s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.55s';
+      cardRoot.style.transform = 'translate(0, -260px) rotate(-15deg)';
+      cardRoot.style.opacity = '0';
+      setTimeout(() => {
+        cardRoot.style.transform = 'translate(0, 0) rotate(0deg)';
+        cardRoot.style.opacity = '1';
+      }, 120 + i * perDeal);
+    });
+
+    // Reveal players (non-winners first), then dealer, then winner.
+    const dealEnd = 120 + totalDealCards * perDeal + 550;
+    // Reserve a generous window for the winner's BLACKJACK moment so it gets to land
+    // (the BLACKJACK badge appears 700ms AFTER the final card flips — that delay used to
+    // eat almost the entire hold window).
+    const winnerHold = 2800;
+    const remaining = Math.max(1200, blackjackDuration - dealEnd - winnerHold);
+    const nonWinners = playerEls.map((_, i) => i).filter(i => i !== winnerVisualIdx);
+    for (let i = nonWinners.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nonWinners[i], nonWinners[j]] = [nonWinners[j], nonWinners[i]];
+    }
+
+    const revealSchedule = [];
+    nonWinners.forEach(idx => revealSchedule.push({ kind: 'player', idx }));
+    revealSchedule.push({ kind: 'dealer' });
+    revealSchedule.push({ kind: 'player', idx: winnerVisualIdx });
+
+    // Step is over the non-winner + dealer reveals; the winner gets the dedicated hold afterward.
+    const stepMs = remaining / Math.max(1, revealSchedule.length - 1);
+    // Absolute time at which the BLACKJACK badge becomes visible on the winner's seat.
+    // (Card flip happens at `winnerCardFlipAt`; badge appears 700ms later.)
+    const winnerCardFlipAt = dealEnd + (revealSchedule.length - 1) * stepMs + 400;
+    const winnerBadgeAt = winnerCardFlipAt + 700;
+
+    revealSchedule.forEach((step, n) => {
+      const isLast = n === revealSchedule.length - 1;
+      const at = isLast
+        ? winnerCardFlipAt
+        : dealEnd + n * stepMs;
+      setTimeout(() => {
+        if (step.kind === 'dealer') {
+          dealerCard1.inner.style.transform = 'rotateY(180deg)';
+          setTimeout(() => { dealerCard2.inner.style.transform = 'rotateY(180deg)'; }, 380);
+          return;
+        }
+        const p = playerEls[step.idx];
+        p.card1.inner.style.transform = 'rotateY(180deg)';
+        setTimeout(() => { p.card2.inner.style.transform = 'rotateY(180deg)'; }, 380);
+        setTimeout(() => {
+          p.scoreBadge.textContent = p.label2;
+          p.scoreBadge.style.opacity = '1';
+          if (p.isWinner) {
+            p.scoreBadge.style.background = '#ffcc00';
+            p.scoreBadge.style.color = '#222';
+            p.scoreBadge.style.transform = 'scale(1.15)';
+            p.scoreBadge.style.fontSize = '13px';
+            p.seat.style.transform = 'scale(1.12) translateY(-6px)';
+            p.seat.style.filter = 'drop-shadow(0 0 18px rgba(255,204,0,0.85))';
+          } else if (p.score > 21) {
+            p.scoreBadge.style.background = '#c8102e';
+            p.scoreBadge.style.color = '#fff';
+            p.seat.style.filter = 'grayscale(0.8) brightness(0.6)';
+          } else {
+            p.scoreBadge.style.background = 'rgba(0,0,0,0.7)';
+            p.seat.style.filter = 'grayscale(0.5) brightness(0.7)';
+          }
+        }, 700);
+      }, at);
+    });
+
+    // Close timing must give the BLACKJACK badge enough dwell time to actually be read.
+    const closeAt = Math.max(blackjackDuration + 100, winnerBadgeAt + 1800);
+    setTimeout(() => {
+      overlay.remove();
+      revealWinner(order, targetIndex);
+    }, closeAt);
+  }
+    /* ======================== End of picker animations ======================== */
+
+    /** Pick a random picker animation. */
+    function randomPicker() {
+      return PICKER_REGISTRY[Math.floor(Math.random() * PICKER_REGISTRY.length)].getFn();
+    }
+
+    /* ======================== Controls + URL params ======================== */
+
+    const $names = document.getElementById('names');
+    const $picker = document.getElementById('picker');
+    const $time = document.getElementById('time');
+    const $spin = document.getElementById('spin');
+    const $share = document.getElementById('share');
+    const $preview = document.getElementById('preview');
+
+    // Populate the picker <select>
+    const randomOpt = document.createElement('option');
+    randomOpt.value = 'random';
+    randomOpt.textContent = '\uD83C\uDFB2 Random';
+    $picker.appendChild(randomOpt);
+    PICKER_REGISTRY.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.label;
+      $picker.appendChild(opt);
+    });
+
+    function parseNamesFromText(text) {
+      return String(text || '')
+        .split(/[\n,]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function currentNames() {
+      return parseNamesFromText($names.value);
+    }
+
+    function renderPreview() {
+      $preview.innerHTML = '';
+      const names = currentNames();
+      names.forEach(n => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        const img = document.createElement('img');
+        img.src = generateAvatar(n);
+        img.alt = '';
+        const span = document.createElement('span');
+        span.textContent = n;
+        chip.appendChild(img);
+        chip.appendChild(span);
+        $preview.appendChild(chip);
+      });
+    }
+
+    /** Read URL query params, supporting both wheeldecide and friendlier formats. */
+    function readNamesFromQuery() {
+      const params = new URLSearchParams(location.search);
+
+      // 1) ?c1=...&c2=... (collect every cN in numeric order)
+      const cParams = [];
+      for (const [key, value] of params.entries()) {
+        const m = key.match(/^c(\d+)$/i);
+        if (m) cParams.push({ n: parseInt(m[1], 10), value });
+      }
+      cParams.sort((a, b) => a.n - b.n);
+      let names = cParams.map(c => c.value);
+
+      // 2) ?names=a,b,c (used if no cN params)
+      if (names.length === 0 && params.has('names')) {
+        names = parseNamesFromText(params.get('names'));
+      }
+
+      // 3) ?time=5  (seconds; clamped 0.8s..8s)
+      if (params.has('time')) {
+        const t = parseFloat(params.get('time'));
+        if (Number.isFinite(t)) {
+          const clamped = Math.max(0.8, Math.min(8, t));
+          $time.value = String(clamped);
+          CONFIG.spinDuration = Math.round(clamped * 1000);
+        }
+      }
+
+      // 4) ?picker=wheel|...|random
+      if (params.has('picker')) {
+        const id = params.get('picker');
+        const valid = id === 'random' || PICKER_REGISTRY.some(p => p.id === id);
+        if (valid) $picker.value = id;
+      }
+
+      if (names.length > 0) {
+        $names.value = names.join('\n');
+      }
+    }
+
+    function applyTimeFromInput() {
+      const t = parseFloat($time.value);
+      if (Number.isFinite(t)) {
+        const clamped = Math.max(0.8, Math.min(8, t));
+        CONFIG.spinDuration = Math.round(clamped * 1000);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 1500);
+    }
+
+    function copyShareableUrl() {
+      const names = currentNames();
+      if (names.length === 0) {
+        showToast('Add some names first');
+        return;
+      }
+      const params = new URLSearchParams();
+      names.forEach((n, i) => params.set('c' + (i + 1), n));
+      if ($picker.value && $picker.value !== 'random') {
+        params.set('picker', $picker.value);
+      }
+      const t = parseFloat($time.value);
+      if (Number.isFinite(t) && Math.abs(t - 3) > 0.01) {
+        params.set('time', String(t));
+      }
+      const url = location.origin + location.pathname + '?' + params.toString();
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (_) { /* ignore */ }
+        ta.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(
+          () => showToast('Link copied'),
+          () => { fallback(); showToast('Link copied'); }
+        );
+      } else {
+        fallback();
+        showToast('Link copied');
+      }
+    }
+
+    function spin() {
+      applyTimeFromInput();
+      const people = buildPeople(currentNames());
+      if (people.length < 2) {
+        showToast('Add at least 2 names');
+        return;
+      }
+      if (document.querySelector('[data-standup-overlay]')) {
+        // Don't start a new spin while another is running.
+        return;
+      }
+      const targetIndex = Math.floor(Math.random() * people.length);
+      const id = $picker.value || 'random';
+      const fn = id === 'random'
+        ? randomPicker()
+        : (PICKER_REGISTRY.find(p => p.id === id) || PICKER_REGISTRY[0]).getFn();
+      fn(people, targetIndex);
+    }
+
+    /* Wire up controls */
+    $names.addEventListener('input', renderPreview);
+    $time.addEventListener('change', applyTimeFromInput);
+    $spin.addEventListener('click', spin);
+    $share.addEventListener('click', copyShareableUrl);
+
+    document.addEventListener('keydown', (e) => {
+      const ae = document.activeElement;
+      const tag = (ae && ae.tagName ? ae.tagName : '').toLowerCase();
+      const isTyping =
+        tag === 'input' || tag === 'textarea' || tag === 'select' || (ae && ae.isContentEditable);
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const hasOverlay = !!document.querySelector('[data-standup-overlay]');
+      if (e.key === 'Escape') {
+        if (hasOverlay) {
+          e.preventDefault();
+          dismissActiveOverlays();
+        }
+        return;
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (isTyping) return;
+        if (hasOverlay) return;
+        e.preventDefault();
+        spin();
+      }
+    });
+
+    /* Boot */
+    readNamesFromQuery();
+    renderPreview();
+    applyTimeFromInput();
+  })();
+  </script>
+</body>
+</html>
