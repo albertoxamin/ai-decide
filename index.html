@@ -3714,31 +3714,36 @@
 
     document.body.appendChild(overlay);
 
-    // Phase 1: fast blurry cycle
+    // Phase 1: fast blurry cycle. Interval handles live in this scope so Phase 3 can
+    // clear them itself — avoiding a race where a stale tick overwrites the winner.
     const shuffled = order.slice().sort(() => Math.random() - 0.5);
     let idx = 0;
-    const fastInterval = setInterval(() => {
+    let fastInterval = setInterval(() => {
       nameEl.textContent = String(shuffled[idx % shuffled.length].name).toUpperCase().slice(0, 12);
       idx++;
     }, 75);
-    setTimeout(() => clearInterval(fastInterval), cycleMs);
+    let slowInterval = null;
 
     // Mid-cycle: progress creeps to ~45%
     setTimeout(() => { progressBar.style.width = '45%'; }, Math.min(300, cycleMs * 0.4));
 
-    // Phase 2: slow cycle
+    // Phase 2: stop the fast cycle, start the slow one. No separate "stop slow"
+    // timer — Phase 3 will clear it explicitly.
     setTimeout(() => {
-      const slowInterval = setInterval(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      slowInterval = setInterval(() => {
         nameEl.textContent = String(shuffled[idx % shuffled.length].name).toUpperCase().slice(0, 12);
         idx++;
       }, 180);
-      setTimeout(() => clearInterval(slowInterval), slowMs);
       progressBar.style.width = '72%';
       progressLabel.textContent = 'ANALYZING\u2026';
     }, cycleMs);
 
-    // Phase 3: ENHANCE
+    // Phase 3: ENHANCE. Clear both intervals before writing the winner so no stale
+    // tick can clobber it.
     setTimeout(() => {
+      if (fastInterval) { clearInterval(fastInterval); fastInterval = null; }
+      if (slowInterval) { clearInterval(slowInterval); slowInterval = null; }
       nameEl.textContent = String(order[targetIndex].name).toUpperCase().slice(0, 12);
       progressLabel.textContent = 'ENHANCING\u2026';
       progressBar.style.width = '100%';
