@@ -3319,25 +3319,27 @@
       }, tickMs);
     }, liftMs);
 
-    // Phase: cycle names through the window
+    // Phase: cycle names through the window. Interval handle lives in this scope so
+    // the settle phase can clear it itself, avoiding a race where a stale tick
+    // overwrites the winner.
+    let cycleInterval = null;
     const cycleStart = liftMs + shakeMs + 260;
     setTimeout(() => {
       const stepMs = 75;
-      const steps = Math.max(6, Math.round(cycleMs / stepMs));
       let i = 0;
-      // Shuffle the visible order so cycling doesn't always show the same neighbour first
       const cycleOrder = order.slice().sort(() => Math.random() - 0.5);
-      const interval = setInterval(() => {
+      cycleInterval = setInterval(() => {
         const pick = cycleOrder[i % cycleOrder.length];
         answer.textContent = String(pick.name).toUpperCase().slice(0, 16);
         i++;
-        if (i >= steps) clearInterval(interval);
       }, stepMs);
     }, cycleStart);
 
-    // Phase: settle on the winner + glow
+    // Phase: settle on the winner + glow. Clear the cycle interval BEFORE writing
+    // the winner so no in-flight tick can clobber it.
     const settleAt = cycleStart + cycleMs;
     setTimeout(() => {
+      if (cycleInterval) { clearInterval(cycleInterval); cycleInterval = null; }
       answer.textContent = String(order[targetIndex].name).toUpperCase().slice(0, 16);
       answer.style.transition = 'transform 0.4s ease, text-shadow 0.4s ease, font-size 0.4s ease';
       answer.style.transform = 'translateY(10px) scale(1.12)';
