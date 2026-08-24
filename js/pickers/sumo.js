@@ -6,18 +6,22 @@ export const label = 'Sumo';
 const MAWASHI = ['#c83a1e', '#1b3a8a', '#1b110a', '#2c5d52', '#6b1a8a', '#b85a10'];
 const SKIN = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#d4a574'];
 
-function makeRikishi(person, i, faceLeft) {
+const RIKISHI_MOVE =
+  'left 0.4s cubic-bezier(0.2,0.8,0.3,1.1), top 0.4s cubic-bezier(0.2,0.8,0.3,1.1),' +
+  'transform 0.4s cubic-bezier(0.55,0.05,0.9,1.05), opacity 0.35s, filter 0.35s';
+
+function makeRikishi(person, i) {
   const color = MAWASHI[i % MAWASHI.length];
   const skin = SKIN[i % SKIN.length];
   const wrap = document.createElement('div');
   wrap.style.cssText =
     'position:absolute;width:88px;height:120px;z-index:6;' +
-    'transition:left 0.4s cubic-bezier(0.2,0.8,0.3,1.1), top 0.4s cubic-bezier(0.2,0.8,0.3,1.1),' +
-    'transform 0.4s cubic-bezier(0.55,0.05,0.9,1.05), opacity 0.35s, filter 0.35s;' +
-    'transform-origin:50% 90%;' +
-    (faceLeft ? 'transform:scaleX(-1);' : '');
+    'transition:' + RIKISHI_MOVE + ';' +
+    'transform-origin:50% 90%;';
 
-  wrap.innerHTML =
+  const sprite = document.createElement('div');
+  sprite.style.cssText = 'position:absolute;inset:0;transform-origin:50% 90%;';
+  sprite.innerHTML =
     '<div style="position:absolute;left:22px;bottom:0;width:16px;height:22px;background:' + skin + ';' +
     'border:2px solid #1b110a;border-radius:4px;"></div>' +
     '<div style="position:absolute;right:22px;bottom:0;width:16px;height:22px;background:' + skin + ';' +
@@ -38,20 +42,55 @@ function makeRikishi(person, i, faceLeft) {
     'position:absolute;left:50%;top:4px;width:44px;height:44px;margin-left:-22px;' +
     'border-radius:50%;object-fit:cover;border:3px solid #1b110a;background:#fbf4dd;' +
     'box-shadow:0 3px 0 rgba(0,0,0,0.25);';
-  wrap.appendChild(head);
+  sprite.appendChild(head);
+  wrap.appendChild(sprite);
+  wrap._sprite = sprite;
 
   const tag = document.createElement('div');
   tag.textContent = String(person.name).slice(0, 10);
   tag.style.cssText =
-    'position:absolute;left:50%;bottom:-18px;transform:translateX(-50%)' +
-    (faceLeft ? ' scaleX(-1)' : '') + ';' +
+    'position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);' +
     'font-family:"Rye","Times New Roman",serif;font-size:10px;color:#fbf4dd;' +
     'text-shadow:0 1px 2px #000;white-space:nowrap;';
   wrap.appendChild(tag);
   return wrap;
 }
 
-/** Champion holds the dohyo. Challengers charge, they clash, the loser is thrown. */
+function faceOnLeft(el, onLeft) {
+  el._sprite.style.transform = onLeft ? 'none' : 'scaleX(-1)';
+}
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+}
+
+/** Pair remaining rikishi until one is left. The named winner never loses a bout;
+ *  which side stays is random, and non-final bouts can be between two non-winners. */
+function planBouts(count, targetIndex) {
+  const remaining = [];
+  for (let i = 0; i < count; i++) remaining.push(i);
+  const bouts = [];
+  while (remaining.length > 1) {
+    shuffleInPlace(remaining);
+    const a = remaining[0];
+    const b = remaining[1];
+    let win;
+    if (a === targetIndex) win = a;
+    else if (b === targetIndex) win = b;
+    else win = Math.random() < 0.5 ? a : b;
+    const lose = win === a ? b : a;
+    bouts.push({ win: win, lose: lose, winOnLeft: Math.random() < 0.5 });
+    remaining.splice(remaining.indexOf(lose), 1);
+  }
+  return bouts;
+}
+
+/** Bouts on the dohyo. Either side can be thrown; last one standing is the pick. */
 export function show(order, targetIndex) {
   const overlay = createPickerOverlay();
   const winner = order[targetIndex];
@@ -136,15 +175,15 @@ export function show(order, targetIndex) {
     'border:2px solid #1b110a;border-radius:2px;transform:rotate(-25deg);"></div>';
   stage.appendChild(gyoji);
 
-  const champLeft = 168;
-  const champTop = 188;
-  const chalLeft = 384;
-  const chalTop = 188;
-
-  const champ = makeRikishi(winner, targetIndex, false);
-  champ.style.left = champLeft + 'px';
-  champ.style.top = champTop + 'px';
-  stage.appendChild(champ);
+  const restLeft = 168;
+  const restRight = 384;
+  const clashLeft = 236;
+  const clashRight = 316;
+  const enterLeft = -100;
+  const enterRight = 640;
+  const throwLeftX = -90;
+  const throwRightX = 610;
+  const ringTop = 188;
 
   const dust = document.createElement('div');
   dust.style.cssText =
@@ -162,39 +201,50 @@ export function show(order, targetIndex) {
 
   document.body.appendChild(overlay);
 
-  const challengers = order.map(function (_, i) { return i; }).filter(function (i) { return i !== targetIndex; });
-  for (let i = challengers.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = challengers[i];
-    challengers[i] = challengers[j];
-    challengers[j] = tmp;
+  const bouts = planBouts(order.length, targetIndex);
+  let live = [];
+  let champEl = null;
+
+  function clearLive() {
+    live.forEach(function (el) { el.remove(); });
+    live = [];
   }
 
-  let currentChal = null;
+  function spawn(idx, onLeft, enterX) {
+    const el = makeRikishi(order[idx], idx);
+    el.style.left = enterX + 'px';
+    el.style.top = ringTop + 'px';
+    faceOnLeft(el, onLeft);
+    stage.appendChild(el);
+    live.push(el);
+    return el;
+  }
 
-  challengers.forEach(function (idx, n) {
+  bouts.forEach(function (bout, n) {
     setTimeout(function () {
-      if (currentChal) currentChal.remove();
-      const person = order[idx];
-      currentChal = makeRikishi(person, idx, true);
-      currentChal.style.left = '640px';
-      currentChal.style.top = chalTop + 'px';
-      stage.appendChild(currentChal);
-      caption.textContent = person.name + '  vs  ' + winner.name;
+      clearLive();
+      const winOnLeft = bout.winOnLeft;
+      const leftIdx = winOnLeft ? bout.win : bout.lose;
+      const rightIdx = winOnLeft ? bout.lose : bout.win;
+      const winEl = spawn(bout.win, winOnLeft, winOnLeft ? enterLeft : enterRight);
+      const loseEl = spawn(bout.lose, !winOnLeft, winOnLeft ? enterRight : enterLeft);
+      champEl = winEl;
+
+      caption.textContent = order[leftIdx].name + '  vs  ' + order[rightIdx].name;
       gyoji.style.animation = 'none';
       void gyoji.offsetWidth;
       gyoji.style.animation = 'sumoGyoji 0.45s ease-in-out';
 
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          currentChal.style.left = chalLeft + 'px';
+          winEl.style.left = (winOnLeft ? restLeft : restRight) + 'px';
+          loseEl.style.left = (winOnLeft ? restRight : restLeft) + 'px';
         });
       });
 
-      const thrown = currentChal;
       setTimeout(function () {
-        champ.style.left = '236px';
-        thrown.style.left = '316px';
+        winEl.style.left = (winOnLeft ? clashLeft : clashRight) + 'px';
+        loseEl.style.left = (winOnLeft ? clashRight : clashLeft) + 'px';
         dais.style.animation = 'none';
         void dais.offsetWidth;
         dais.style.animation = 'sumoShake 0.28s ease-in-out';
@@ -204,26 +254,28 @@ export function show(order, targetIndex) {
       }, 340);
 
       setTimeout(function () {
-        thrown.style.left = '610px';
-        thrown.style.top = '36px';
-        thrown.style.transform = 'scaleX(-1) rotate(-60deg)';
-        thrown.style.filter = 'grayscale(1)';
-        thrown.style.opacity = '0.2';
-        champ.style.left = champLeft + 'px';
-        champ.style.animation = 'none';
-        void champ.offsetWidth;
-        champ.style.animation = 'sumoStomp 0.4s ease';
-        caption.textContent = person.name + ' \u2014 out!';
+        loseEl.style.left = (winOnLeft ? throwRightX : throwLeftX) + 'px';
+        loseEl.style.top = '36px';
+        loseEl.style.transform = 'rotate(' + (winOnLeft ? -62 : 62) + 'deg)';
+        loseEl.style.filter = 'grayscale(1)';
+        loseEl.style.opacity = '0.2';
+        winEl.style.left = (winOnLeft ? restLeft : restRight) + 'px';
+        winEl.style.animation = 'none';
+        void winEl.offsetWidth;
+        winEl.style.animation = 'sumoStomp 0.4s ease';
+        caption.textContent = order[bout.lose].name + ' \u2014 out!';
       }, 580);
     }, n * BOUT_MS);
   });
 
-  const winAt = Math.max(challengers.length, 1) * BOUT_MS;
+  const winAt = Math.max(bouts.length, 1) * BOUT_MS;
   setTimeout(function () {
-    champ.style.left = '276px';
-    champ.style.top = '176px';
-    champ.style.transform = 'scale(1.28)';
-    champ.style.filter = 'drop-shadow(0 0 16px rgba(217,154,43,0.95))';
+    if (champEl) {
+      champEl.style.left = '276px';
+      champEl.style.top = '176px';
+      champEl.style.transform = 'scale(1.28)';
+      champEl.style.filter = 'drop-shadow(0 0 16px rgba(217,154,43,0.95))';
+    }
     caption.textContent = winner.name + '  \u2014  YOSHI!';
     gyoji.style.animation = 'sumoGyoji 0.5s ease-in-out 2';
   }, winAt);

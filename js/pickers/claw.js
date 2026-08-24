@@ -3,6 +3,44 @@ import { CONFIG, createPickerOverlay, revealWinner } from '../core.js';
 export const id = 'claw';
 export const label = 'Claw machine';
 
+function steelStops(id) {
+  return (
+    '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="0">' +
+      '<stop offset="0%" stop-color="#f6f7f8"/>' +
+      '<stop offset="20%" stop-color="#c9ced4"/>' +
+      '<stop offset="48%" stop-color="#8a919a"/>' +
+      '<stop offset="78%" stop-color="#2f353c"/>' +
+      '<stop offset="100%" stop-color="#b7bcc3"/>' +
+    '</linearGradient>'
+  );
+}
+
+function makeClawFinger(side) {
+  const isLeft = side === 'left';
+  const el = document.createElement('div');
+  el.style.cssText =
+    'position:absolute;top:14px;width:30px;height:48px;z-index:2;' +
+    (isLeft ? 'left:2px;' : 'right:2px;') +
+    'transform-origin:' + (isLeft ? '23px 6px' : '7px 6px') + ';' +
+    'transform:rotate(' + (isLeft ? '-24deg' : '24deg') + ');' +
+    'transition:transform 0.32s cubic-bezier(0.4,0,0.6,1);';
+  const gid = 'clawSteel' + side;
+  el.innerHTML =
+    '<svg viewBox="0 0 30 48" width="30" height="48" aria-hidden="true">' +
+      '<defs>' + steelStops(gid) + '</defs>' +
+      '<g' + (isLeft ? '' : ' transform="translate(30,0) scale(-1,1)"') + '>' +
+        '<path d="M19 1.5 h8.5 v11 L24 27 h-9 L20.5 13 V1.5 Z" fill="url(#' + gid + ')" stroke="#1b110a" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<path d="M13 25.5 h12 L7 46.5 1.8 41.2 16 27.5 Z" fill="url(#' + gid + ')" stroke="#1b110a" stroke-width="1.7" stroke-linejoin="round"/>' +
+        '<path d="M21 4 v8" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="1.3" stroke-linecap="round"/>' +
+        '<circle cx="23.2" cy="5.8" r="3.1" fill="#f0c93a" stroke="#1b110a" stroke-width="1.4"/>' +
+        '<circle cx="18.5" cy="27" r="2.6" fill="#f0c93a" stroke="#1b110a" stroke-width="1.3"/>' +
+        '<circle cx="23.2" cy="5.8" r="1" fill="#3a2a10"/>' +
+        '<circle cx="18.5" cy="27" r="0.8" fill="#3a2a10"/>' +
+      '</g>' +
+    '</svg>';
+  return el;
+}
+
 export function show(order, targetIndex) {
     const overlay = createPickerOverlay();
 
@@ -102,45 +140,87 @@ export function show(order, targetIndex) {
       plushEls.push({ el: plush, x, y });
     });
 
-    // The crane: rail trolley + cable + claw
+    // The crane: rail trolley + cable + 3-prong arcade claw
+    const trolleyW = 44;
+    const clawW = 72;
+    const clawH = 52;
+    const cableRestH = 36;
     const craneX0 = 40;
+    const clawPadX = (trolleyW - clawW) / 2;
+
     const trolley = document.createElement('div');
     trolley.style.cssText =
-      `position:absolute;left:${craneX0}px;top:${railY - 10}px;width:36px;height:24px;` +
-      'background:linear-gradient(180deg,#aaa,#555);border:2px solid #222;border-radius:4px;' +
-      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1);z-index:7;box-shadow:0 2px 4px rgba(0,0,0,0.5);';
+      `position:absolute;left:${craneX0}px;top:${railY - 12}px;width:${trolleyW}px;height:26px;` +
+      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1);z-index:7;';
+    trolley.innerHTML =
+      '<svg viewBox="0 0 44 26" width="44" height="26" aria-hidden="true">' +
+        '<defs>' +
+          '<linearGradient id="trolleyPaint" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#ffe566"/>' +
+            '<stop offset="55%" stop-color="#f0c020"/>' +
+            '<stop offset="100%" stop-color="#b07a00"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<rect x="3" y="3" width="38" height="16" rx="3" fill="url(#trolleyPaint)" stroke="#1b110a" stroke-width="2"/>' +
+        '<rect x="8" y="7" width="28" height="5" rx="1" fill="#2a2e34" stroke="#1b110a" stroke-width="1"/>' +
+        '<circle cx="12" cy="20" r="4.6" fill="#6a7078" stroke="#1b110a" stroke-width="1.6"/>' +
+        '<circle cx="32" cy="20" r="4.6" fill="#6a7078" stroke="#1b110a" stroke-width="1.6"/>' +
+        '<circle cx="12" cy="20" r="1.5" fill="#ddd"/>' +
+        '<circle cx="32" cy="20" r="1.5" fill="#ddd"/>' +
+      '</svg>';
     cabinet.appendChild(trolley);
 
     const cable = document.createElement('div');
     cable.style.cssText =
-      `position:absolute;left:${craneX0 + 16}px;top:${railY + 14}px;width:2px;height:40px;` +
-      'background:#222;transition:left 0.85s cubic-bezier(0.4,0,0.6,1), height 0.55s cubic-bezier(0.4,0,0.6,1);z-index:6;';
+      `position:absolute;left:${craneX0 + trolleyW / 2 - 1.5}px;top:${railY + 12}px;width:3px;height:${cableRestH}px;` +
+      'background:linear-gradient(90deg,#bbb 0%,#555 35%,#222 70%,#777 100%);' +
+      'border-radius:1px;box-shadow:1px 0 0 #111;' +
+      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1), height 0.55s cubic-bezier(0.4,0,0.6,1);z-index:6;';
     cabinet.appendChild(cable);
 
     const claw = document.createElement('div');
     claw.style.cssText =
-      `position:absolute;left:${craneX0 - 6}px;top:${railY + 50}px;width:48px;height:36px;` +
-      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1), top 0.55s cubic-bezier(0.4,0,0.6,1);z-index:8;';
+      `position:absolute;left:${craneX0 + clawPadX}px;top:${railY + 12 + cableRestH}px;width:${clawW}px;height:${clawH}px;` +
+      'transition:left 0.85s cubic-bezier(0.4,0,0.6,1), top 0.55s cubic-bezier(0.4,0,0.6,1);z-index:8;' +
+      'filter:drop-shadow(0 3px 2px rgba(0,0,0,0.45));';
+
+    const clawBack = document.createElement('div');
+    clawBack.style.cssText =
+      'position:absolute;left:50%;top:16px;width:16px;height:36px;margin-left:-8px;z-index:0;' +
+      'transform-origin:50% 3px;transition:transform 0.32s cubic-bezier(0.4,0,0.6,1);';
+    clawBack.innerHTML =
+      '<svg viewBox="0 0 16 36" width="16" height="36" aria-hidden="true">' +
+        '<defs>' + steelStops('clawSteelBack') + '</defs>' +
+        '<path d="M5 1.5 h6 v12 L9 33 7 33 5 13.5 Z" fill="url(#clawSteelBack)" stroke="#1b110a" stroke-width="1.5" stroke-linejoin="round"/>' +
+        '<path d="M4 31 h8 L8 35.5 Z" fill="url(#clawSteelBack)" stroke="#1b110a" stroke-width="1.4" stroke-linejoin="round"/>' +
+      '</svg>';
+    claw.appendChild(clawBack);
+
+    const clawL = makeClawFinger('left');
+    const clawR = makeClawFinger('right');
+    claw.appendChild(clawL);
+    claw.appendChild(clawR);
 
     const clawCenter = document.createElement('div');
     clawCenter.style.cssText =
-      'position:absolute;left:50%;top:0;transform:translateX(-50%);width:18px;height:14px;' +
-      'background:linear-gradient(180deg,#ccc,#666);border:2px solid #222;border-radius:4px 4px 2px 2px;';
+      'position:absolute;left:50%;top:0;width:34px;height:24px;margin-left:-17px;z-index:3;';
+    clawCenter.innerHTML =
+      '<svg viewBox="0 0 34 24" width="34" height="24" aria-hidden="true">' +
+        '<defs>' +
+          '<linearGradient id="clawHubY" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#ffe566"/>' +
+            '<stop offset="55%" stop-color="#e8b41c"/>' +
+            '<stop offset="100%" stop-color="#8a5a08"/>' +
+          '</linearGradient>' +
+          steelStops('clawHubSteel') +
+        '</defs>' +
+        '<rect x="12" y="0" width="10" height="7" rx="1.2" fill="url(#clawHubSteel)" stroke="#1b110a" stroke-width="1.5"/>' +
+        '<ellipse cx="17" cy="14" rx="15" ry="9" fill="url(#clawHubY)" stroke="#1b110a" stroke-width="1.8"/>' +
+        '<ellipse cx="17" cy="12.2" rx="10" ry="4.2" fill="rgba(255,255,255,0.22)"/>' +
+        '<circle cx="17" cy="15" r="3.4" fill="url(#clawHubSteel)" stroke="#1b110a" stroke-width="1.3"/>' +
+        '<circle cx="17" cy="15" r="1.2" fill="#1b110a"/>' +
+      '</svg>';
     claw.appendChild(clawCenter);
-
-    const clawL = document.createElement('div');
-    clawL.style.cssText =
-      'position:absolute;left:6px;top:10px;width:14px;height:24px;' +
-      'background:linear-gradient(135deg,#bbb,#555);border:2px solid #222;border-radius:6px 0 6px 18px;' +
-      'transform-origin:top right;transition:transform 0.3s cubic-bezier(0.4,0,0.6,1);';
-    claw.appendChild(clawL);
-
-    const clawR = document.createElement('div');
-    clawR.style.cssText =
-      'position:absolute;right:6px;top:10px;width:14px;height:24px;' +
-      'background:linear-gradient(225deg,#bbb,#555);border:2px solid #222;border-radius:0 6px 18px 6px;' +
-      'transform-origin:top left;transition:transform 0.3s cubic-bezier(0.4,0,0.6,1);';
-    claw.appendChild(clawR);
 
     cabinet.appendChild(claw);
 
@@ -148,9 +228,15 @@ export function show(order, targetIndex) {
     document.body.appendChild(overlay);
 
     const winnerInfo = plushEls[winnerVisualIdx];
-    const targetCraneX = winnerInfo.x + plushSize / 2 - 18;
-    const trolleyTargetX = winnerInfo.x + plushSize / 2 - 18;
-    const dropDepth = winnerInfo.y - railY - 50 - 4;
+    const trolleyTargetX = winnerInfo.x + plushSize / 2 - trolleyW / 2;
+    const clawRestTop = railY + 12 + cableRestH;
+    const dropDepth = winnerInfo.y - clawRestTop - 8;
+
+    function parkCrane(trolleyX) {
+      trolley.style.left = `${trolleyX}px`;
+      cable.style.left = `${trolleyX + trolleyW / 2 - 1.5}px`;
+      claw.style.left = `${trolleyX + clawPadX}px`;
+    }
 
     const t1 = 100;                              // start: glide claw to winner column
     const t2 = t1 + 950;                         // descend
@@ -161,42 +247,38 @@ export function show(order, targetIndex) {
     const t7 = t6 + 600;                         // plush lands in tray
 
     setTimeout(() => {
-      trolley.style.left = `${trolleyTargetX}px`;
-      cable.style.left = `${trolleyTargetX + 16}px`;
-      claw.style.left = `${targetCraneX}px`;
+      parkCrane(trolleyTargetX);
     }, t1);
 
     setTimeout(() => {
-      cable.style.height = `${dropDepth + 50}px`;
-      claw.style.top = `${winnerInfo.y - 10}px`;
+      cable.style.height = `${dropDepth + cableRestH}px`;
+      claw.style.top = `${winnerInfo.y - 8}px`;
     }, t2);
 
     setTimeout(() => {
-      clawL.style.transform = 'rotate(35deg)';
-      clawR.style.transform = 'rotate(-35deg)';
-      // Lift the plush along with the claw (attach visually).
+      clawL.style.transform = 'rotate(26deg)';
+      clawR.style.transform = 'rotate(-26deg)';
+      clawBack.style.transform = 'translateY(5px) scaleY(0.9)';
       winnerInfo.el.style.zIndex = '9';
     }, t3);
 
     setTimeout(() => {
-      cable.style.height = '40px';
-      claw.style.top = `${railY + 50}px`;
-      winnerInfo.el.style.left = `${targetCraneX + 18 - plushSize / 2}px`;
-      winnerInfo.el.style.top = `${railY + 86}px`;
+      cable.style.height = `${cableRestH}px`;
+      claw.style.top = `${clawRestTop}px`;
+      winnerInfo.el.style.left = `${trolleyTargetX + trolleyW / 2 - plushSize / 2}px`;
+      winnerInfo.el.style.top = `${clawRestTop + 18}px`;
     }, t4);
 
     setTimeout(() => {
-      const chuteCenter = chuteX + 25 - 18;
-      trolley.style.left = `${chuteCenter}px`;
-      cable.style.left = `${chuteCenter + 16}px`;
-      claw.style.left = `${chuteCenter}px`;
-      winnerInfo.el.style.left = `${chuteCenter + 18 - plushSize / 2}px`;
+      const chuteTrolleyX = chuteX + 25 - trolleyW / 2;
+      parkCrane(chuteTrolleyX);
+      winnerInfo.el.style.left = `${chuteTrolleyX + trolleyW / 2 - plushSize / 2}px`;
     }, t5);
 
     setTimeout(() => {
-      // Open claw & release plush; it falls into the tray
-      clawL.style.transform = 'rotate(0deg)';
-      clawR.style.transform = 'rotate(0deg)';
+      clawL.style.transform = 'rotate(-24deg)';
+      clawR.style.transform = 'rotate(24deg)';
+      clawBack.style.transform = 'none';
       winnerInfo.el.style.transition = 'top 0.55s cubic-bezier(0.55, 0, 0.7, 1), transform 0.55s, box-shadow 0.4s';
       winnerInfo.el.style.top = `${trayY - plushSize / 2}px`;
       winnerInfo.el.style.transform = 'scale(1.1)';
