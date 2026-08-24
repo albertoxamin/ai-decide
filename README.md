@@ -20,7 +20,7 @@ to a pre-loaded roster:
 | `c1`, `c2`, … | `?c1=ada&c2=linus&c3=grace` | One name per slot (wheeldecide-style). |
 | `names` | `?names=ada,linus,grace` | Same idea, comma-separated. |
 | `time` | `?time=5` | Spin duration in seconds (0.8–8). |
-| `picker` | `?picker=wheel` | Pre-select an animation (`wheel`, `dice`, `lotto`, `slot`, `plinko`, `roulette`, `horses`, `fortune`, `f1`, `hack`, `lightning`, `domino`, `sortinghat`, `torch`, `squidgame`, `capybara`, `tarot`, `claw`, `hotpotato`, `blackjack`, `magic8`, `strongman`, `upscale`, `actionfigure`, `brainrot`, or `random`). |
+| `picker` | `?picker=wheel` | Pre-select an animation (`wheel`, `dice`, `lotto`, `slot`, `plinko`, `roulette`, `horses`, `fortune`, `f1`, `hack`, `lightning`, `domino`, `sortinghat`, `torch`, `squidgame`, `capybara`, `tarot`, `claw`, `hotpotato`, `blackjack`, `magic8`, `strongman`, `upscale`, `actionfigure`, `brainrot`, `odyssey`, `oscars`, `penalty`, or `random`). |
 
 Example: `index.html?c1=ada&c2=linus&c3=grace&time=4&picker=wheel`.
 

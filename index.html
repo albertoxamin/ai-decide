@@ -553,6 +553,9 @@
       { id: 'upscale',    label: 'AI Upscale (144p\u21924K)', getFn: () => showUpscalePopup },
       { id: 'actionfigure', label: 'AI Action Figure', getFn: () => showActionFigurePopup },
       { id: 'brainrot',   label: 'Italian Brain Rot', getFn: () => showItalianBrainrotPopup },
+      { id: 'odyssey',    label: 'Challenge of the Bow', getFn: () => showBowChallengePopup },
+      { id: 'oscars',     label: 'Oscars envelope',   getFn: () => showOscarsPopup },
+      { id: 'penalty',    label: 'Penalty shootout',  getFn: () => showPenaltyPopup },
     ];
 
     /** Build the standard dimmed-overlay container used by every picker animation. */
@@ -2448,7 +2451,7 @@
       const card = document.createElement('div');
       card.style.cssText =
         'position:relative;width:100%;height:100%;transform-style:preserve-3d;' +
-        'transition:transform 0.85s cubic-bezier(0.55, 0, 0.25, 1), filter 0.4s;';
+        'transition:transform 0.85s cubic-bezier(0.55, 0, 0.25, 1);';
 
       const back = document.createElement('div');
       back.style.cssText =
@@ -2492,7 +2495,7 @@
       card.appendChild(front);
       cardWrap.appendChild(card);
       cardsRow.appendChild(cardWrap);
-      cardEls.push({ wrap: cardWrap, card, isWinner });
+      cardEls.push({ wrap: cardWrap, card, front, isWinner });
     });
 
     overlay.appendChild(stage);
@@ -2519,10 +2522,21 @@
         ? dealEnd + (revealOrder.length - 1) * flipStep + 350
         : dealEnd + n * flipStep;
       setTimeout(() => {
-        const { card, isWinner } = cardEls[visualIdx];
+        const { card, front, isWinner } = cardEls[visualIdx];
         card.style.transform = 'rotateY(180deg)';
         if (!isWinner) {
-          setTimeout(() => { card.style.filter = 'grayscale(0.7) brightness(0.55)'; }, 500);
+          // Do not put filter/opacity on wrap or card: both flatten
+          // preserve-3d and the flipped face goes blank. Gray the
+          // 2D front contents so the card stays visible.
+          setTimeout(() => {
+            front.style.background = 'linear-gradient(180deg,#d0d0d0,#9a9a9a)';
+            front.style.borderColor = '#7a7a7a';
+            front.style.color = '#4a4a4a';
+            const img = front.querySelector('img');
+            if (img) img.style.filter = 'grayscale(1) brightness(0.75)';
+            const title = front.firstChild;
+            if (title && title.style) title.style.color = '#5a5a5a';
+          }, 500);
         } else if (isLast) {
           setTimeout(() => {
             cardEls[visualIdx].wrap.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s';
@@ -4202,6 +4216,749 @@
       styleEl.remove();
       revealWinner(order, targetIndex);
     }, cycleMs + slowMs + slamMs + holdMs);
+  }
+
+  /** Odyssey picker — Penelope's Challenge of the Bow (Odyssey XXI). Suitors
+   *  take turns trying to string Odysseus's great bow and fail. The winner
+   *  strings it easily and sends an arrow through twelve axe-head sockets. */
+  function showBowChallengePopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+    const AXE_COUNT = 12;
+    const CANDIDATE_MS = 1000;
+    const flightMs = 600;
+    const holdMs = 400;
+
+    const headline = document.createElement('div');
+    headline.textContent = 'Challenge of the Bow';
+    headline.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:24px;letter-spacing:3px;' +
+      'color:#fbf4dd;text-shadow:0 3px 0 rgba(0,0,0,0.6);text-transform:uppercase;';
+    overlay.appendChild(headline);
+
+    const stageW = 640;
+    const stageH = 390;
+    const holeY = 158;
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      'position:relative;width:' + stageW + 'px;height:' + stageH + 'px;overflow:hidden;' +
+      'background:linear-gradient(180deg,#3a2414 0%,#1c120c 48%,#2a1a10 100%);' +
+      'border:5px solid #1b110a;border-radius:10px;' +
+      'box-shadow:0 24px 50px rgba(0,0,0,0.7), inset 0 0 80px rgba(217,154,43,0.12);';
+    overlay.appendChild(stage);
+
+    const caption = document.createElement('div');
+    caption.textContent = "Penelope's contest \u2014 string the bow, shoot through twelve axes";
+    caption.style.cssText =
+      'position:absolute;left:16px;right:16px;top:12px;text-align:center;' +
+      'font-family:"Fraunces",Georgia,serif;font-size:13px;font-style:italic;' +
+      'color:#e8d5a8;letter-spacing:0.4px;z-index:8;' +
+      'text-shadow:0 1px 2px rgba(0,0,0,0.8);';
+    stage.appendChild(caption);
+
+    // Hall columns
+    [18, stageW - 34].forEach(function (x) {
+      const col = document.createElement('div');
+      col.style.cssText =
+        'position:absolute;left:' + x + 'px;top:42px;width:16px;bottom:78px;' +
+        'background:linear-gradient(90deg,#6b4a28,#3a2814 40%,#5a3c20);' +
+        'border-radius:8px 8px 2px 2px;box-shadow:inset -3px 0 6px rgba(0,0,0,0.45);';
+      stage.appendChild(col);
+    });
+
+    // Floor
+    const floor = document.createElement('div');
+    floor.style.cssText =
+      'position:absolute;left:0;right:0;bottom:0;height:78px;' +
+      'background:linear-gradient(180deg,#4a3420 0%,#2c1c10 100%);' +
+      'border-top:3px solid #1b110a;';
+    stage.appendChild(floor);
+
+    // Archer dais
+    const dais = document.createElement('div');
+    dais.style.cssText =
+      'position:absolute;left:28px;bottom:78px;width:96px;height:14px;' +
+      'background:linear-gradient(180deg,#8a6230,#4a3018);border:2px solid #1b110a;border-radius:3px;';
+    stage.appendChild(dais);
+
+    const archerWrap = document.createElement('div');
+    archerWrap.style.cssText =
+      'position:absolute;left:40px;bottom:92px;width:72px;' +
+      'display:flex;flex-direction:column;align-items:center;gap:4px;z-index:6;' +
+      'transition:filter 0.35s, transform 0.35s;';
+    const archerImg = document.createElement('img');
+    archerImg.src = order[0].avatarUrl;
+    archerImg.style.cssText =
+      'width:56px;height:56px;border-radius:50%;object-fit:cover;' +
+      'border:3px solid #d99a2b;box-shadow:0 0 16px rgba(217,154,43,0.45);';
+    const archerName = document.createElement('div');
+    archerName.textContent = String(order[0].name).slice(0, 10);
+    archerName.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:11px;color:#fbf4dd;' +
+      'letter-spacing:0.5px;text-shadow:0 1px 2px #000;max-width:90px;text-align:center;';
+    archerWrap.appendChild(archerImg);
+    archerWrap.appendChild(archerName);
+    stage.appendChild(archerWrap);
+
+    // Bow facing the axes: stave bulges right (toward the targets), string
+    // on the archer's side (left). Unstrung at first — slack string.
+    const bow = document.createElement('div');
+    bow.style.cssText =
+      'position:absolute;left:108px;top:' + (holeY - 72) + 'px;width:70px;height:148px;' +
+      'transform-origin:80% 50%;z-index:5;';
+    bow.innerHTML =
+      '<svg viewBox="0 0 70 148" width="70" height="148" aria-hidden="true">' +
+        '<path d="M52 10 C62 40, 62 108, 52 138" fill="none" stroke="#6b3a18" stroke-width="9" stroke-linecap="round"/>' +
+        '<path d="M52 10 C62 40, 62 108, 52 138" fill="none" stroke="#d99a2b" stroke-width="3" stroke-linecap="round"/>' +
+        '<path id="bow-string" d="M52 12 Q28 74 52 136" fill="none" stroke="#e8d9b0" stroke-width="2"/>' +
+      '</svg>';
+    stage.appendChild(bow);
+    const bowString = bow.querySelector('#bow-string');
+
+    // Twelve axe-heads in a row, sockets aligned on the arrow path
+    const axeStartX = 188;
+    const axeGap = 35;
+    const axeEls = [];
+    for (let i = 0; i < AXE_COUNT; i++) {
+      const axe = document.createElement('div');
+      const x = axeStartX + i * axeGap;
+      axe.style.cssText =
+        'position:absolute;left:' + x + 'px;top:' + (holeY - 22) + 'px;width:28px;height:150px;' +
+        'z-index:3;transition:filter 0.35s;';
+      axe.innerHTML =
+        '<div style="position:absolute;left:11px;top:38px;width:6px;height:108px;' +
+        'background:linear-gradient(90deg,#8a5a28,#3a2410);border:1px solid #1b110a;border-radius:2px;"></div>' +
+        '<div style="position:absolute;left:1px;top:0;width:26px;height:42px;' +
+        'background:radial-gradient(circle at 40% 40%,#d4a24a,#8a5a18 70%,#3a2410);' +
+        'border:2px solid #1b110a;border-radius:40% 40% 28% 28%;' +
+        'box-shadow:inset 0 -4px 8px rgba(0,0,0,0.35);"></div>' +
+        '<div style="position:absolute;left:8px;top:11px;width:12px;height:12px;border-radius:50%;' +
+        'background:#1c120c;border:2px solid #e8d5a8;box-shadow:inset 0 0 4px #000;"></div>';
+      stage.appendChild(axe);
+      axeEls.push(axe);
+    }
+
+    // Arrow (hidden until the winning shot)
+    const arrow = document.createElement('div');
+    const arrowStart = 118;
+    const lastAxeX = axeStartX + (AXE_COUNT - 1) * axeGap + 22;
+    arrow.style.cssText =
+      'position:absolute;left:' + arrowStart + 'px;top:' + (holeY - 5) + 'px;' +
+      'width:46px;height:10px;z-index:7;opacity:0;pointer-events:none;';
+    arrow.innerHTML =
+      '<div style="position:absolute;left:0;top:3px;width:34px;height:4px;background:linear-gradient(90deg,#e8d9b0,#8a6230);border-radius:1px;"></div>' +
+      '<div style="position:absolute;right:0;top:0;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:12px solid #c83a1e;"></div>' +
+      '<div style="position:absolute;left:-4px;top:1px;width:8px;height:8px;background:#2c5d52;clip-path:polygon(100% 50%,0 0,0 100%);"></div>';
+    stage.appendChild(arrow);
+
+    // Bottom roster of suitors
+    const roster = document.createElement('div');
+    roster.style.cssText =
+      'position:absolute;left:12px;right:12px;bottom:10px;height:58px;' +
+      'display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;';
+    stage.appendChild(roster);
+    const rosterEls = order.map(function (person, i) {
+      const chip = document.createElement('div');
+      chip.style.cssText =
+        'display:flex;flex-direction:column;align-items:center;gap:2px;' +
+        'transition:opacity 0.35s, filter 0.35s, transform 0.35s;';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText =
+        'width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid #5a4232;';
+      const nm = document.createElement('span');
+      nm.textContent = String(person.name).slice(0, 7);
+      nm.style.cssText = 'font-size:8px;color:#e8d5a8;font-weight:600;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      chip.appendChild(img);
+      chip.appendChild(nm);
+      roster.appendChild(chip);
+      return { chip: chip, img: img, index: i };
+    });
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes bowStruggle { 0%,100% { transform: rotate(0deg) translateX(0); } ' +
+      '25% { transform: rotate(-8deg) translateX(-2px); } 75% { transform: rotate(7deg) translateX(3px); } }' +
+      '@keyframes torchFlicker { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }' +
+      '@keyframes axeRing { 0% { filter: drop-shadow(0 0 0 rgba(255,232,150,0)); } ' +
+      '100% { filter: drop-shadow(0 0 10px rgba(255,232,150,0.95)); } }';
+    document.head.appendChild(styleEl);
+
+    const torch = document.createElement('div');
+    torch.style.cssText =
+      'position:absolute;right:48px;top:48px;width:70px;height:70px;border-radius:50%;' +
+      'background:radial-gradient(circle, rgba(255,180,60,0.55), transparent 70%);' +
+      'pointer-events:none;animation:torchFlicker 1.1s ease-in-out infinite;';
+    stage.appendChild(torch);
+
+    document.body.appendChild(overlay);
+
+    const FAIL_LINES = [
+      'The bow will not yield',
+      'He cannot even string it',
+      'Bronze and horn defy him',
+      'The suitor sits down in shame',
+    ];
+    const tryOrder = order.map(function (_, i) { return i; }).filter(function (i) { return i !== targetIndex; });
+    for (let i = tryOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = tryOrder[i];
+      tryOrder[i] = tryOrder[j];
+      tryOrder[j] = tmp;
+    }
+    if (tryOrder.length === 0) tryOrder.push(targetIndex);
+
+    const failers = tryOrder.filter(function (i) { return i !== targetIndex; });
+    const tryMs = failers.length * CANDIDATE_MS;
+    const stringMs = CANDIDATE_MS;
+    let shownFails = 0;
+
+    function setArcher(person) {
+      archerImg.src = person.avatarUrl;
+      archerName.textContent = String(person.name).slice(0, 10);
+    }
+
+    failers.forEach(function (idx, n) {
+      setTimeout(function () {
+        const person = order[idx];
+        setArcher(person);
+        bow.style.animation = 'none';
+        void bow.offsetWidth;
+        bow.style.animation = 'bowStruggle 0.28s linear infinite';
+        caption.textContent = String(person.name) + ' takes the bow\u2026';
+        rosterEls.forEach(function (r) {
+          r.img.style.borderColor = r.index === idx ? '#e35636' : '#5a4232';
+        });
+        setTimeout(function () {
+          bow.style.animation = 'none';
+          caption.textContent = FAIL_LINES[shownFails % FAIL_LINES.length];
+          shownFails++;
+          const r = rosterEls[idx];
+          r.chip.style.opacity = '0.35';
+          r.chip.style.filter = 'grayscale(1)';
+        }, 650);
+      }, n * CANDIDATE_MS);
+    });
+
+    setTimeout(function () {
+      bow.style.animation = 'none';
+      setArcher(winner);
+      caption.textContent = String(winner.name) + ' strings it as a bard strings a lyre';
+      archerWrap.style.transform = 'scale(1.08)';
+      archerImg.style.borderColor = '#ffd86b';
+      archerImg.style.boxShadow = '0 0 22px rgba(255,232,150,0.9)';
+      rosterEls.forEach(function (r) {
+        if (r.index === targetIndex) {
+          r.chip.style.opacity = '1';
+          r.chip.style.filter = 'none';
+          r.chip.style.transform = 'translateY(-6px) scale(1.12)';
+          r.img.style.borderColor = '#ffd86b';
+        }
+      });
+      // Snap the string taut (vertical, archer-side)
+      if (bowString) bowString.setAttribute('d', 'M52 12 L52 136');
+      bow.style.transition = 'transform 0.35s cubic-bezier(0.3,1.5,0.5,1)';
+      bow.style.transform = 'rotate(6deg)';
+    }, tryMs);
+
+    setTimeout(function () {
+      caption.textContent = 'The bronze sings \u2014 through twelve axe-heads';
+      arrow.style.opacity = '1';
+      arrow.style.transition = 'left ' + flightMs + 'ms cubic-bezier(0.22, 0.7, 0.35, 1)';
+      arrow.style.left = lastAxeX + 'px';
+      axeEls.forEach(function (axe, i) {
+        setTimeout(function () {
+          axe.style.animation = 'axeRing 0.28s ease-out forwards';
+        }, Math.round((i / AXE_COUNT) * flightMs));
+      });
+    }, tryMs + stringMs);
+
+    setTimeout(function () {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, tryMs + stringMs + flightMs + holdMs);
+  }
+
+  /** Oscars envelope picker. A gold envelope trembles on a red-carpet podium
+   *  while nominee names tick by. The flap lifts, a card slides out with the
+   *  winner, and the rest of the roster goes grayscale in their seats. */
+  function showOscarsPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+    const totalMs = CONFIG.spinDuration;
+    const drumMs = Math.max(1400, Math.round(totalMs * 0.55));
+    const openMs = Math.max(500, Math.round(totalMs * 0.18));
+    const holdMs = Math.max(450, totalMs - drumMs - openMs);
+
+    const headline = document.createElement('div');
+    headline.textContent = 'And the pick is\u2026';
+    headline.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:24px;letter-spacing:3px;' +
+      'color:#f6e27a;text-shadow:0 3px 0 rgba(0,0,0,0.65);text-transform:uppercase;';
+    overlay.appendChild(headline);
+
+    const stageW = 620;
+    const stageH = 400;
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      'position:relative;width:' + stageW + 'px;height:' + stageH + 'px;overflow:hidden;' +
+      'background:radial-gradient(ellipse at 50% 30%,#5a1028 0%,#1a050c 62%,#0a0206 100%);' +
+      'border:5px solid #d4af37;border-radius:12px;' +
+      'box-shadow:0 24px 50px rgba(0,0,0,0.7), inset 0 0 80px rgba(212,175,55,0.12);';
+    overlay.appendChild(stage);
+
+    const caption = document.createElement('div');
+    caption.textContent = 'The envelope, please';
+    caption.style.cssText =
+      'position:absolute;left:16px;right:16px;top:12px;text-align:center;z-index:8;' +
+      'font-family:"Fraunces",Georgia,serif;font-size:13px;font-style:italic;color:#f6e27a;' +
+      'text-shadow:0 1px 3px #000;letter-spacing:0.4px;';
+    stage.appendChild(caption);
+
+    // Curtains
+    ['left:0;background:linear-gradient(90deg,#8a1028,#4a0814);',
+     'right:0;background:linear-gradient(270deg,#8a1028,#4a0814);'].forEach(function (side) {
+      const c = document.createElement('div');
+      c.style.cssText =
+        'position:absolute;top:0;bottom:0;width:46px;' + side +
+        'box-shadow:inset -8px 0 16px rgba(0,0,0,0.45);';
+      stage.appendChild(c);
+    });
+
+    // Spotlight
+    const spot = document.createElement('div');
+    spot.style.cssText =
+      'position:absolute;left:50%;top:36px;width:280px;height:220px;transform:translateX(-50%);' +
+      'background:radial-gradient(ellipse at 50% 0%, rgba(255,232,150,0.28), transparent 70%);' +
+      'pointer-events:none;z-index:1;';
+    stage.appendChild(spot);
+
+    const ENV_W = 168;
+    const FLAP_H = 56;
+    const BODY_H = 96;
+
+    // Podium under the envelope
+    const podium = document.createElement('div');
+    podium.style.cssText =
+      'position:absolute;left:50%;bottom:88px;width:188px;height:18px;margin-left:-94px;' +
+      'background:linear-gradient(180deg,#2a1208,#120806);border:2px solid #d4af37;border-radius:4px;' +
+      'z-index:3;';
+    stage.appendChild(podium);
+
+    // Envelope stack — centered with margin, never with transform, so shake/open
+    // don't knock it sideways.
+    const envWrap = document.createElement('div');
+    envWrap.style.cssText =
+      'position:absolute;left:50%;top:70px;width:' + ENV_W + 'px;height:200px;' +
+      'margin-left:-' + (ENV_W / 2) + 'px;z-index:5;transform-origin:50% 85%;';
+
+    const bodyTop = 200 - BODY_H;
+
+    const card = document.createElement('div');
+    card.style.cssText =
+      'position:absolute;left:16px;width:' + (ENV_W - 32) + 'px;height:118px;' +
+      'bottom:14px;z-index:1;' +
+      'background:#fbf4dd;border:2px solid #5a4308;border-radius:6px;' +
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;' +
+      'box-shadow:0 6px 14px rgba(0,0,0,0.4);' +
+      'transition:bottom 0.55s cubic-bezier(0.22, 0.9, 0.3, 1);';
+    const cardImg = document.createElement('img');
+    cardImg.src = winner.avatarUrl;
+    cardImg.style.cssText =
+      'width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #d4af37;';
+    const cardName = document.createElement('div');
+    cardName.textContent = String(winner.name);
+    cardName.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:13px;color:#1b110a;letter-spacing:0.5px;text-align:center;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    card.appendChild(cardImg);
+    card.appendChild(cardName);
+
+    const envBody = document.createElement('div');
+    envBody.style.cssText =
+      'position:absolute;left:0;bottom:0;width:' + ENV_W + 'px;height:' + BODY_H + 'px;z-index:2;' +
+      'background:linear-gradient(180deg,#f6e27a,#c9a227 72%,#8a7018);border:2px solid #5a4308;' +
+      'border-radius:4px 4px 8px 8px;box-shadow:0 8px 18px rgba(0,0,0,0.55);';
+
+    const envSeal = document.createElement('div');
+    envSeal.style.cssText =
+      'position:absolute;left:50%;top:36px;margin-left:-14px;width:28px;height:28px;border-radius:50%;' +
+      'background:radial-gradient(circle at 35% 30%,#ff5a4a,#8a1018);border:2px solid #5a0808;' +
+      'transition:opacity 0.3s ease;z-index:5;';
+    envBody.appendChild(envSeal);
+
+    // Closed: triangle pointing down, covering the card. Open: same hinge
+    // (top of the body) but triangle pointing up.
+    const flap = document.createElement('div');
+    flap.style.cssText =
+      'position:absolute;left:0;top:' + bodyTop + 'px;width:0;height:0;z-index:4;' +
+      'border-left:' + (ENV_W / 2) + 'px solid transparent;' +
+      'border-right:' + (ENV_W / 2) + 'px solid transparent;' +
+      'border-top:' + FLAP_H + 'px solid #e8c547;' +
+      'border-bottom:0 solid transparent;' +
+      'filter:drop-shadow(0 2px 2px rgba(0,0,0,0.3));' +
+      'transition:top 0.45s ease, border-top-width 0.45s ease, border-bottom-width 0.45s ease;';
+
+    envWrap.appendChild(card);
+    envWrap.appendChild(envBody);
+    envWrap.appendChild(flap);
+    stage.appendChild(envWrap);
+
+    // Nominee row
+    const row = document.createElement('div');
+    row.style.cssText =
+      'position:absolute;left:12px;right:12px;bottom:12px;height:70px;' +
+      'display:flex;align-items:flex-end;justify-content:center;gap:8px;z-index:4;';
+    stage.appendChild(row);
+    const nomineeEls = order.map(function (person, i) {
+      const chip = document.createElement('div');
+      chip.style.cssText =
+        'display:flex;flex-direction:column;align-items:center;gap:3px;' +
+        'transition:filter 0.4s, opacity 0.4s, transform 0.4s;';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText =
+        'width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid #d4af37;';
+      const nm = document.createElement('span');
+      nm.textContent = String(person.name).slice(0, 8);
+      nm.style.cssText = 'font-size:9px;color:#f6e27a;font-weight:600;max-width:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      chip.appendChild(img);
+      chip.appendChild(nm);
+      row.appendChild(chip);
+      return { chip: chip, img: img, index: i };
+    });
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes oscarsShake { 0%,100% { transform: rotate(0deg); } ' +
+      '25% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } ' +
+      '75% { transform: rotate(-3deg); } }' +
+      '@keyframes oscarsFlash { 0%,100% { opacity: 0.35; } 50% { opacity: 0.85; } }';
+    document.head.appendChild(styleEl);
+
+    const flash = document.createElement('div');
+    flash.style.cssText =
+      'position:absolute;inset:0;pointer-events:none;z-index:0;' +
+      'background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.12), transparent 55%);' +
+      'animation:oscarsFlash 1.2s ease-in-out infinite;';
+    stage.appendChild(flash);
+
+    document.body.appendChild(overlay);
+
+    envWrap.style.animation = 'oscarsShake 0.22s linear infinite';
+
+    const tickOrder = order.map(function (_, i) { return i; });
+    for (let i = tickOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = tickOrder[i];
+      tickOrder[i] = tickOrder[j];
+      tickOrder[j] = tmp;
+    }
+    let tick = 0;
+    const tickIv = setInterval(function () {
+      const person = order[tickOrder[tick % tickOrder.length]];
+      caption.textContent = 'Nominee \u2014 ' + person.name;
+      nomineeEls.forEach(function (n) {
+        n.img.style.boxShadow = n.index === tickOrder[tick % tickOrder.length]
+          ? '0 0 12px rgba(246,226,122,0.9)' : 'none';
+      });
+      tick++;
+    }, 160);
+
+    setTimeout(function () {
+      clearInterval(tickIv);
+      envWrap.style.animation = 'none';
+      envWrap.style.transform = 'rotate(0deg)';
+      caption.textContent = 'The envelope is opened\u2026';
+      envSeal.style.opacity = '0';
+      card.style.zIndex = '6';
+      flap.style.borderTopWidth = '0px';
+      flap.style.borderBottomWidth = FLAP_H + 'px';
+      flap.style.borderBottomColor = '#e8c547';
+      flap.style.top = (bodyTop - FLAP_H) + 'px';
+    }, drumMs);
+
+    setTimeout(function () {
+      card.style.bottom = '92px';
+      caption.textContent = String(winner.name).toUpperCase();
+      nomineeEls.forEach(function (n) {
+        if (n.index === targetIndex) {
+          n.chip.style.transform = 'translateY(-8px) scale(1.12)';
+          n.img.style.borderColor = '#fff3a0';
+          n.img.style.boxShadow = '0 0 16px rgba(246,226,122,0.95)';
+        } else {
+          n.chip.style.filter = 'grayscale(1)';
+          n.chip.style.opacity = '0.4';
+          n.img.style.boxShadow = 'none';
+        }
+      });
+    }, drumMs + openMs);
+
+    setTimeout(function () {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, drumMs + openMs + holdMs);
+  }
+
+  /** Penalty shootout picker. Kickers take turns from the spot. The keeper
+   *  saves every miss (those avatars gray out). The winner's shot beats the
+   *  dive, the net bulges, and GOAL lights up. */
+  function showPenaltyPopup(order, targetIndex) {
+    const overlay = createPickerOverlay();
+    const winner = order[targetIndex];
+    const SHOT_MS = 900;
+    const GOAL_MS = 1100;
+    const holdMs = 500;
+    const MAX_MISSES = 5;
+
+    const headline = document.createElement('div');
+    headline.textContent = 'Penalty Shootout';
+    headline.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:24px;letter-spacing:3px;' +
+      'color:#fbf4dd;text-shadow:0 3px 0 rgba(0,0,0,0.6);text-transform:uppercase;';
+    overlay.appendChild(headline);
+
+    const stageW = 640;
+    const stageH = 390;
+    const stage = document.createElement('div');
+    stage.style.cssText =
+      'position:relative;width:' + stageW + 'px;height:' + stageH + 'px;overflow:hidden;' +
+      'background:linear-gradient(180deg,#1e5a28 0%,#2f8a3a 38%,#3aa34a 100%);' +
+      'border:5px solid #1b110a;border-radius:10px;' +
+      'box-shadow:0 24px 50px rgba(0,0,0,0.7);';
+    overlay.appendChild(stage);
+
+    // Pitch stripes
+    for (let i = 0; i < 6; i++) {
+      const stripe = document.createElement('div');
+      stripe.style.cssText =
+        'position:absolute;left:0;right:0;top:' + (i * 56) + 'px;height:28px;' +
+        'background:rgba(255,255,255,' + (i % 2 ? '0.05' : '0.02') + ');pointer-events:none;';
+      stage.appendChild(stripe);
+    }
+
+    const caption = document.createElement('div');
+    caption.textContent = 'Sudden death from the spot';
+    caption.style.cssText =
+      'position:absolute;left:16px;right:16px;top:10px;text-align:center;z-index:8;' +
+      'font-family:"Fraunces",Georgia,serif;font-size:13px;font-style:italic;color:#fbf4dd;' +
+      'text-shadow:0 1px 3px #000;';
+    stage.appendChild(caption);
+
+    // Goal (right side)
+    const goal = document.createElement('div');
+    const goalLeft = 478;
+    const goalTop = 70;
+    const goalW = 132;
+    const goalH = 168;
+    goal.style.cssText =
+      'position:absolute;left:' + goalLeft + 'px;top:' + goalTop + 'px;width:' + goalW + 'px;height:' + goalH + 'px;' +
+      'border:6px solid #fbf4dd;border-right:6px solid #fbf4dd;border-radius:4px 10px 10px 4px;' +
+      'background:repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0 8px, transparent 8px 16px),' +
+      'repeating-linear-gradient(0deg, rgba(255,255,255,0.1) 0 8px, transparent 8px 16px);' +
+      'box-shadow:inset -12px 0 20px rgba(0,0,0,0.25);z-index:3;';
+    stage.appendChild(goal);
+
+    const netPulse = document.createElement('div');
+    netPulse.style.cssText =
+      'position:absolute;inset:0;background:rgba(255,255,255,0);pointer-events:none;transition:background 0.2s;';
+    goal.appendChild(netPulse);
+
+    // Keeper
+    const keeper = document.createElement('div');
+    keeper.style.cssText =
+      'position:absolute;left:' + (goalLeft + 38) + 'px;top:' + (goalTop + 54) + 'px;width:54px;' +
+      'display:flex;flex-direction:column;align-items:center;gap:2px;z-index:5;' +
+      'transition:top 0.28s cubic-bezier(0.2, 0.8, 0.3, 1), left 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);';
+    const keeperBody = document.createElement('div');
+    keeperBody.style.cssText =
+      'width:40px;height:48px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#f4f4f4,#c8c8c8);' +
+      'border:2px solid #1b110a;';
+    const keeperHead = document.createElement('div');
+    keeperHead.style.cssText =
+      'width:26px;height:26px;border-radius:50%;background:#f1c27d;border:2px solid #1b110a;margin-top:-18px;';
+    keeper.appendChild(keeperHead);
+    keeper.appendChild(keeperBody);
+    const gloves = document.createElement('div');
+    gloves.textContent = 'SAVE';
+    gloves.style.cssText =
+      'font-size:8px;font-weight:800;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:1px;opacity:0;transition:opacity 0.2s;';
+    keeper.appendChild(gloves);
+    stage.appendChild(keeper);
+    const keeperRestTop = goalTop + 54;
+    const keeperRestLeft = goalLeft + 38;
+
+    // Ball
+    const ball = document.createElement('div');
+    const ballStartLeft = 118;
+    const ballStartTop = 210;
+    ball.style.cssText =
+      'position:absolute;left:' + ballStartLeft + 'px;top:' + ballStartTop + 'px;width:22px;height:22px;z-index:6;' +
+      'border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#d8d8d8 40%,#222 42%,#fff 70%);' +
+      'border:2px solid #1b110a;box-shadow:0 3px 6px rgba(0,0,0,0.4);' +
+      'transition:left 0.55s cubic-bezier(0.2, 0.7, 0.4, 1), top 0.55s cubic-bezier(0.2, 0.7, 0.4, 1);';
+    stage.appendChild(ball);
+
+    // Penalty spot
+    const spotMark = document.createElement('div');
+    spotMark.style.cssText =
+      'position:absolute;left:124px;top:236px;width:10px;height:10px;border-radius:50%;background:#fbf4dd;';
+    stage.appendChild(spotMark);
+
+    // Kicker
+    const kickerWrap = document.createElement('div');
+    kickerWrap.style.cssText =
+      'position:absolute;left:36px;top:168px;width:72px;' +
+      'display:flex;flex-direction:column;align-items:center;gap:4px;z-index:6;' +
+      'transition:transform 0.25s ease;';
+    const kickerImg = document.createElement('img');
+    kickerImg.src = order[0].avatarUrl;
+    kickerImg.style.cssText =
+      'width:52px;height:52px;border-radius:50%;object-fit:cover;border:3px solid #fbf4dd;';
+    const kickerName = document.createElement('div');
+    kickerName.textContent = String(order[0].name).slice(0, 10);
+    kickerName.style.cssText =
+      'font-family:"Rye","Times New Roman",serif;font-size:11px;color:#fbf4dd;text-shadow:0 1px 2px #000;';
+    kickerWrap.appendChild(kickerImg);
+    kickerWrap.appendChild(kickerName);
+    stage.appendChild(kickerWrap);
+
+    // Roster
+    const roster = document.createElement('div');
+    roster.style.cssText =
+      'position:absolute;left:10px;right:10px;bottom:8px;height:56px;' +
+      'display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;z-index:7;';
+    stage.appendChild(roster);
+    const rosterEls = order.map(function (person, i) {
+      const chip = document.createElement('div');
+      chip.style.cssText =
+        'display:flex;flex-direction:column;align-items:center;gap:2px;transition:filter 0.35s, opacity 0.35s, transform 0.35s;';
+      const img = document.createElement('img');
+      img.src = person.avatarUrl;
+      img.style.cssText = 'width:26px;height:26px;border-radius:50%;object-fit:cover;border:2px solid #fbf4dd;';
+      const nm = document.createElement('span');
+      nm.textContent = String(person.name).slice(0, 7);
+      nm.style.cssText = 'font-size:8px;color:#fbf4dd;font-weight:600;max-width:36px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      chip.appendChild(img);
+      chip.appendChild(nm);
+      roster.appendChild(chip);
+      return { chip: chip, img: img, index: i };
+    });
+
+    const goalBanner = document.createElement('div');
+    goalBanner.textContent = 'GOAL';
+    goalBanner.style.cssText =
+      'position:absolute;left:50%;top:48px;transform:translateX(-50%) scale(0.4);opacity:0;' +
+      'font-family:"Rye","Times New Roman",serif;font-size:48px;letter-spacing:6px;color:#fff;' +
+      'text-shadow:0 3px 0 #1b110a, 0 0 22px rgba(255,220,80,0.9);z-index:9;' +
+      'transition:opacity 0.2s, transform 0.45s cubic-bezier(0.3,1.6,0.5,1);';
+    stage.appendChild(goalBanner);
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent =
+      '@keyframes penKick { 0% { transform: translateX(0); } 40% { transform: translateX(10px) rotate(8deg); } 100% { transform: translateX(0); } }' +
+      '@keyframes penNet { 0% { transform: scaleX(1); } 40% { transform: scaleX(1.08) scaleY(1.04); } 100% { transform: scaleX(1); } }';
+    document.head.appendChild(styleEl);
+
+    document.body.appendChild(overlay);
+
+    const missIdx = order.map(function (_, i) { return i; }).filter(function (i) { return i !== targetIndex; });
+    for (let i = missIdx.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = missIdx[i];
+      missIdx[i] = missIdx[j];
+      missIdx[j] = tmp;
+    }
+    const misses = missIdx.slice(0, MAX_MISSES);
+    misses.forEach(function (idx) {
+      rosterEls[idx].chip.style.opacity = '1';
+    });
+    missIdx.slice(MAX_MISSES).forEach(function (idx) {
+      rosterEls[idx].chip.style.opacity = '0.35';
+      rosterEls[idx].chip.style.filter = 'grayscale(1)';
+    });
+
+    function setKicker(person) {
+      kickerImg.src = person.avatarUrl;
+      kickerName.textContent = String(person.name).slice(0, 10);
+    }
+
+    function resetBall() {
+      ball.style.transition = 'none';
+      ball.style.left = ballStartLeft + 'px';
+      ball.style.top = ballStartTop + 'px';
+      void ball.offsetWidth;
+      ball.style.transition =
+        'left 0.55s cubic-bezier(0.2, 0.7, 0.4, 1), top 0.55s cubic-bezier(0.2, 0.7, 0.4, 1)';
+      keeper.style.left = keeperRestLeft + 'px';
+      keeper.style.top = keeperRestTop + 'px';
+      gloves.style.opacity = '0';
+    }
+
+    misses.forEach(function (idx, n) {
+      setTimeout(function () {
+        const person = order[idx];
+        resetBall();
+        setKicker(person);
+        caption.textContent = person.name + ' steps up\u2026';
+        kickerWrap.style.animation = 'none';
+        void kickerWrap.offsetWidth;
+        kickerWrap.style.animation = 'penKick 0.4s ease-out';
+        rosterEls.forEach(function (r) {
+          r.img.style.borderColor = r.index === idx ? '#ffcc00' : '#fbf4dd';
+        });
+        const diveUp = n % 2 === 0;
+        setTimeout(function () {
+          keeper.style.top = (diveUp ? goalTop + 18 : goalTop + 96) + 'px';
+          keeper.style.left = (keeperRestLeft + (diveUp ? 18 : -8)) + 'px';
+          ball.style.left = (goalLeft + 24) + 'px';
+          ball.style.top = (diveUp ? goalTop + 36 : goalTop + 110) + 'px';
+        }, 180);
+        setTimeout(function () {
+          gloves.style.opacity = '1';
+          caption.textContent = 'SAVED';
+          rosterEls[idx].chip.style.filter = 'grayscale(1)';
+          rosterEls[idx].chip.style.opacity = '0.4';
+        }, 620);
+      }, n * SHOT_MS);
+    });
+
+    const scoreAt = misses.length * SHOT_MS;
+    setTimeout(function () {
+      resetBall();
+      setKicker(winner);
+      caption.textContent = winner.name + ' \u2014 the last kick';
+      kickerWrap.style.animation = 'none';
+      void kickerWrap.offsetWidth;
+      kickerWrap.style.animation = 'penKick 0.4s ease-out';
+      rosterEls.forEach(function (r) {
+        r.img.style.borderColor = r.index === targetIndex ? '#ffcc00' : '#fbf4dd';
+      });
+      setTimeout(function () {
+        keeper.style.top = (goalTop + 18) + 'px';
+        keeper.style.left = (keeperRestLeft - 16) + 'px';
+        ball.style.left = (goalLeft + 78) + 'px';
+        ball.style.top = (goalTop + 108) + 'px';
+      }, 200);
+      setTimeout(function () {
+        caption.textContent = 'GOAL';
+        goalBanner.style.opacity = '1';
+        goalBanner.style.transform = 'translateX(-50%) scale(1)';
+        goal.style.animation = 'penNet 0.45s ease-out';
+        netPulse.style.background = 'rgba(255,232,150,0.28)';
+        kickerImg.style.borderColor = '#ffd86b';
+        kickerImg.style.boxShadow = '0 0 18px rgba(255,232,150,0.9)';
+        rosterEls[targetIndex].chip.style.transform = 'translateY(-8px) scale(1.12)';
+        rosterEls[targetIndex].img.style.borderColor = '#ffd86b';
+      }, 720);
+    }, scoreAt);
+
+    setTimeout(function () {
+      overlay.remove();
+      styleEl.remove();
+      revealWinner(order, targetIndex);
+    }, scoreAt + GOAL_MS + holdMs);
   }
 
     /* ======================== End of picker animations ======================== */
