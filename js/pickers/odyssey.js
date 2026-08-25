@@ -227,8 +227,8 @@ export function show(order, targetIndex) {
         '<polygon points="0,7 10,1 10,13" fill="#2c5d52" stroke="#1b110a" stroke-width="0.8"/>' +
         '<polygon points="2,7 10,3 10,11" fill="#c83a1e"/>' +
         '<rect x="9" y="5.2" width="36" height="3.6" rx="1" fill="#e8d0a0" stroke="#1b110a" stroke-width="0.7"/>' +
-        '<polygon points="44,7 58,1.5 58,12.5" fill="#c83a1e" stroke="#1b110a" stroke-width="0.8"/>' +
-        '<polygon points="46,7 56,4 56,10" fill="#f4ead0"/>' +
+        '<polygon points="44,1.5 44,12.5 58,7" fill="#c83a1e" stroke="#1b110a" stroke-width="0.8"/>' +
+        '<polygon points="46,4 46,10 56,7" fill="#f4ead0"/>' +
       '</svg>';
     stage.appendChild(arrow);
 
