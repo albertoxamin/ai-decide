@@ -3,76 +3,127 @@ import { CONFIG, createPickerOverlay, revealWinner } from '../core.js';
 export const id = 'slot';
 export const label = 'Slot machine';
 
+function uid() {
+  return 'slot_' + Math.random().toString(36).slice(2, 9);
+}
+
+/** Carnival one-arm bandit: three reels lock onto the same face. */
 export function show(order, targetIndex) {
-    const overlay = createPickerOverlay();
-    const winner = order[targetIndex];
+  const overlay = createPickerOverlay();
+  overlay.style.background = 'radial-gradient(ellipse at center, #3a1020 0%, #0c0408 72%)';
+  const winner = order[targetIndex];
+  const ns = uid();
+  const totalMs = CONFIG.spinDuration;
+  const lastStop = Math.max(1100, totalMs - 450);
+  const stopDelays = [lastStop * 0.38, lastStop * 0.68, lastStop];
 
-    const machine = document.createElement('div');
-    machine.style.cssText =
-      'background:linear-gradient(135deg,#c41e3a,#7a0e1f);border:8px solid #ffcc00;' +
-      'border-radius:24px;padding:24px 24px 16px;display:flex;flex-direction:column;align-items:center;' +
-      'gap:14px;box-shadow:0 0 40px rgba(255,204,0,0.5),inset 0 0 20px rgba(0,0,0,0.4);';
+  const styleEl = document.createElement('style');
+  styleEl.textContent =
+    '@keyframes ' + ns + '_bulb { 0%,49% { opacity:1 } 50%,100% { opacity:0.28 } }';
+  document.head.appendChild(styleEl);
 
-    const jackpot = document.createElement('div');
-    jackpot.textContent = '★ JACKPOT ★';
-    jackpot.style.cssText = 'color:#ffcc00;font-weight:900;font-size:18px;letter-spacing:4px;text-shadow:0 2px 4px rgba(0,0,0,0.6);';
-    machine.appendChild(jackpot);
+  const headline = document.createElement('div');
+  headline.textContent = 'One-Armed Bandit';
+  headline.style.cssText =
+    'font-family:"Rye","Times New Roman",serif;font-size:24px;letter-spacing:3px;' +
+    'color:#f6e27a;text-shadow:0 3px 0 #1b110a;text-transform:uppercase;';
+  overlay.appendChild(headline);
 
-    const reelsRow = document.createElement('div');
-    reelsRow.style.cssText = 'display:flex;gap:8px;background:#1a1a1a;padding:10px;border-radius:10px;border:3px solid #444;';
-    machine.appendChild(reelsRow);
+  const machine = document.createElement('div');
+  machine.style.cssText =
+    'position:relative;width:460px;padding:28px 28px 22px 28px;' +
+    'background:linear-gradient(180deg,#8a1a28 0%,#5a1018 55%,#3a0c10 100%);' +
+    'border:6px solid #1b110a;border-radius:14px;' +
+    'box-shadow:0 24px 50px rgba(0,0,0,0.75), inset 0 0 0 5px #d4af37;';
+  overlay.appendChild(machine);
 
-    const reelW = 110;
-    const slotH = 110;
-    const stripLen = 30;
-    const stopDelays = [600, 1500, 2500];
-
-    for (let r = 0; r < 3; r++) {
-      const reelWindow = document.createElement('div');
-      reelWindow.style.cssText = `width:${reelW}px;height:${slotH}px;overflow:hidden;background:#fff;border-radius:6px;position:relative;border:2px solid #333;`;
-
-      const reel = document.createElement('div');
-      reel.style.cssText = 'position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;';
-
-      // Build the strip: random people throughout, winner placed at the last slot so the reel
-      // can land with the winner centered in the window.
-      const strip = [];
-      for (let i = 0; i < stripLen; i++) {
-        strip.push(order[Math.floor(Math.random() * order.length)]);
-      }
-      strip[stripLen - 1] = winner;
-
-      strip.forEach(p => {
-        const slot = document.createElement('div');
-        slot.style.cssText = `flex-shrink:0;height:${slotH}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;color:#222;`;
-        const img = document.createElement('img');
-        img.src = p.avatarUrl;
-        img.style.cssText = 'width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #ffcc00;';
-        const name = document.createElement('span');
-        name.textContent = p.name.split(' ')[0].slice(0, 10);
-        slot.appendChild(img);
-        slot.appendChild(name);
-        reel.appendChild(slot);
-      });
-
-      reelWindow.appendChild(reel);
-      reelsRow.appendChild(reelWindow);
-
-      const finalTop = -((stripLen - 1) * slotH);
-      setTimeout(() => {
-        reel.style.transition = `top ${stopDelays[r]}ms cubic-bezier(0.25, 0.1, 0.2, 1)`;
-        reel.style.top = `${finalTop}px`;
-      }, 50);
-    }
-
-    overlay.appendChild(machine);
-    document.body.appendChild(overlay);
-
-    setTimeout(() => {
-      overlay.remove();
-      revealWinner(order, targetIndex);
-    }, CONFIG.spinDuration + 100);
+  for (let i = 0; i < 11; i++) {
+    const bulb = document.createElement('div');
+    bulb.style.cssText =
+      'position:absolute;top:-8px;left:' + (18 + i * 38) + 'px;width:12px;height:12px;' +
+      'border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff5d6,#d99a2b 70%);' +
+      'border:2px solid #1b110a;animation:' + ns + '_bulb 0.9s steps(1) ' + (i * 70) + 'ms infinite;';
+    machine.appendChild(bulb);
   }
 
-  /** Plinko: a ball drops from the top of a peg board, zigzags down through pegs, lands in the
-   *  winner's slot at the bottom. Path is a biased random walk that always converges to the target. */
+  const jackpot = document.createElement('div');
+  jackpot.textContent = 'JACKPOT';
+  jackpot.style.cssText =
+    'font-family:"Rye","Times New Roman",serif;font-size:18px;letter-spacing:6px;' +
+    'color:#f6e27a;text-align:center;text-shadow:0 2px 0 #1b110a;margin-bottom:14px;';
+  machine.appendChild(jackpot);
+
+  const reelsRow = document.createElement('div');
+  reelsRow.style.cssText =
+    'display:flex;gap:10px;background:#1b110a;padding:12px;border-radius:8px;' +
+    'border:3px solid #d4af37;';
+  machine.appendChild(reelsRow);
+
+  const reelW = 118;
+  const slotH = 118;
+  const stripLen = 28;
+
+  for (let r = 0; r < 3; r++) {
+    const reelWindow = document.createElement('div');
+    reelWindow.style.cssText =
+      'width:' + reelW + 'px;height:' + slotH + 'px;overflow:hidden;position:relative;' +
+      'background:#fbf4dd;border:3px solid #1b110a;border-radius:4px;';
+
+    const reel = document.createElement('div');
+    reel.style.cssText = 'position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;';
+
+    const strip = [];
+    for (let i = 0; i < stripLen; i++) {
+      strip.push(order[Math.floor(Math.random() * order.length)]);
+    }
+    strip[stripLen - 1] = winner;
+
+    strip.forEach((p) => {
+      const slot = document.createElement('div');
+      slot.style.cssText =
+        'flex-shrink:0;height:' + slotH + 'px;display:flex;flex-direction:column;' +
+        'align-items:center;justify-content:center;gap:6px;' +
+        'border-bottom:2px dashed #d4af37;background:#fbf4dd;';
+      const img = document.createElement('img');
+      img.src = p.avatarUrl;
+      img.alt = '';
+      img.style.cssText =
+        'width:58px;height:58px;border-radius:50%;object-fit:cover;border:3px solid #1b110a;';
+      const name = document.createElement('span');
+      name.textContent = p.name.split(' ')[0].slice(0, 10);
+      name.style.cssText =
+        'font-family:"Rye","Times New Roman",serif;font-size:11px;color:#1b110a;letter-spacing:0.4px;';
+      slot.appendChild(img);
+      slot.appendChild(name);
+      reel.appendChild(slot);
+    });
+
+    reelWindow.appendChild(reel);
+    reelsRow.appendChild(reelWindow);
+
+    const finalTop = -((stripLen - 1) * slotH);
+    setTimeout(() => {
+      reel.style.transition = 'top ' + stopDelays[r] + 'ms cubic-bezier(0.25, 0.1, 0.2, 1)';
+      reel.style.top = finalTop + 'px';
+    }, 50);
+  }
+
+  const lever = document.createElement('div');
+  lever.style.cssText =
+    'position:absolute;right:-28px;top:88px;width:22px;height:120px;' +
+    'background:linear-gradient(90deg,#c9ced4,#5a6068);border:3px solid #1b110a;border-radius:8px;';
+  const knob = document.createElement('div');
+  knob.style.cssText =
+    'position:absolute;top:-18px;left:-8px;width:34px;height:34px;border-radius:50%;' +
+    'background:radial-gradient(circle at 35% 30%,#ff6a5a,#c83a1e);border:3px solid #1b110a;';
+  lever.appendChild(knob);
+  machine.appendChild(lever);
+
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    overlay.remove();
+    styleEl.remove();
+    revealWinner(order, targetIndex);
+  }, totalMs + 140);
+}
