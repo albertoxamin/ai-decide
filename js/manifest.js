@@ -35,6 +35,7 @@ export const PICKER_MANIFEST = [
   { id: 'captcha', label: 'Captcha', src: './pickers/captcha.js' },
   { id: 'jenga', label: 'Jenga', src: './pickers/jenga.js' },
   { id: 'amongus', label: 'Among Us eject', src: './pickers/amongus.js' },
+  { id: 'minecraft', label: 'Minecraft dig', src: './pickers/minecraft.js' },
 ];
 
 const _cache = new Map();
